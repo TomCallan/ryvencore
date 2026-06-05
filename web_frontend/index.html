@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ryvencore Web Studio</title>
+    <!-- Google Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js" integrity="sha256-oP6HI9z1XaZNBrJURtCoUT5SUnxFr8s3BzRl+cbzUq8=" crossorigin="anonymous"></script>
+    
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <span class="material-icons-round logo-icon">blur_on</span>
+                <h1>ryvencore <span>Studio</span></h1>
+            </div>
+            
+            <div class="controls-area">
+                <div class="control-group">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <label for="alg-mode-select">Execution Mode</label>
+                        <span class="material-icons-round info-icon-btn" id="btn-mode-info" style="font-size: 14px; cursor: pointer; color: var(--text-secondary);" title="Show execution modes info">info</span>
+                    </div>
+                    <select id="alg-mode-select">
+                        <option value="data">Data Flow (Naive)</option>
+                        <option value="data opt">Data Flow (Optimized)</option>
+                    </select>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <button id="btn-save" class="btn btn-secondary" title="Save to project file">
+                    <span class="material-icons-round">save</span> Save
+                </button>
+                <button id="btn-load" class="btn btn-secondary" title="Load from project file">
+                    <span class="material-icons-round">folder_open</span> Load
+                </button>
+                <button id="btn-clear" class="btn btn-danger" title="Clear all nodes and connections">
+                    <span class="material-icons-round">delete_sweep</span> Clear
+                </button>
+                <button id="btn-pause" class="btn btn-secondary" title="Pause all execution">
+                    <span class="material-icons-round">pause</span> Pause
+                </button>
+                <button id="btn-run" class="btn btn-primary" title="Trigger execution update">
+                    <span class="material-icons-round">play_arrow</span> Run Flow
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <div class="app-body">
+            <!-- Left Sidebar (Node Library) -->
+            <aside class="node-sidebar">
+                <div class="search-box">
+                    <span class="material-icons-round">search</span>
+                    <input type="text" id="node-search" placeholder="Search nodes...">
+                </div>
+                
+                <div class="library-scroll">
+                    <!-- Categories will be generated dynamically -->
+                    <div id="node-library" class="node-library"></div>
+                </div>
+            </aside>
+
+            <!-- Node Editor Canvas -->
+            <main class="canvas-viewport" id="canvas-viewport">
+                <!-- Grid background & pan/zoom wrapper -->
+                <div class="canvas-content" id="canvas-content">
+                    <!-- SVG Overlay for wires -->
+                    <svg class="svg-connections" id="svg-connections">
+                        <defs>
+                            <!-- Glow effect filter -->
+                            <filter id="wire-glow" x="-10%" y="-10%" width="120%" height="120%">
+                                <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#5c6bc0" flood-opacity="0.3"/>
+                            </filter>
+                            <filter id="exec-glow" x="-10%" y="-10%" width="120%" height="120%">
+                                <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#ab47bc" flood-opacity="0.3"/>
+                            </filter>
+                        </defs>
+                        <!-- Connections drawn dynamically -->
+                        <g id="wires-group"></g>
+                        <!-- Active wire when drawing connection -->
+                        <path id="active-wire" class="wire-path drawing" d="" style="display:none;"></path>
+                    </svg>
+                    
+                    <!-- Nodes Container -->
+                    <div class="nodes-layer" id="nodes-layer">
+                        <!-- Nodes generated dynamically -->
+                    </div>
+                </div>
+                
+                <!-- Zoom HUD -->
+                <div class="canvas-hud">
+                    <button id="btn-zoom-in" class="hud-btn"><span class="material-icons-round">add</span></button>
+                    <span id="zoom-level">100%</span>
+                    <button id="btn-zoom-out" class="hud-btn"><span class="material-icons-round">remove</span></button>
+                    <button id="btn-zoom-reset" class="hud-btn"><span class="material-icons-round">restart_alt</span></button>
+                </div>
+            </main>
+        </div>
+
+        <!-- Collapsible Bottom Logs Panel -->
+        <footer class="app-footer closed" id="logs-panel">
+            <div class="footer-header" id="logs-header">
+                <div class="footer-title">
+                    <span class="material-icons-round">terminal</span>
+                    <h3>Execution Log</h3>
+                    <span class="log-count" id="log-count">0</span>
+                </div>
+                <div class="footer-actions">
+                    <button id="btn-clear-logs" class="footer-btn" title="Clear logs">
+                        <span class="material-icons-round">delete</span>
+                    </button>
+                    <button id="btn-toggle-logs" class="footer-btn">
+                        <span class="material-icons-round" id="logs-toggle-icon">keyboard_arrow_up</span>
+                    </button>
+                </div>
+            </div>
+            <div class="footer-body">
+                <div class="log-list" id="log-list">
+                    <!-- Logs generated dynamically -->
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Info Modal -->
+    <div class="modal-overlay" id="mode-info-modal" style="display:none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="material-icons-round" style="color: var(--primary);">info</span>
+                    <h2>Execution Modes Comparison</h2>
+                </div>
+                <button class="modal-close" id="btn-close-modal">
+                    <span class="material-icons-round">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="mode-info-card" style="border-left-color: var(--cat-math);">
+                    <h3 style="color: var(--cat-math);">Data Flow (Naive)</h3>
+                    <p><strong>Mechanism:</strong> Data is propagated forward immediately on any output value change.</p>
+                    <p><strong>Use Cases:</strong> Simple, linear data processing pipelines. Fast to setup with no graph compilation overhead.</p>
+                </div>
+                <div class="mode-info-card" style="border-left-color: var(--cat-string);">
+                    <h3 style="color: var(--cat-string);">Data Flow (Optimized)</h3>
+                    <p><strong>Mechanism:</strong> Compiler runs topological sorting so that each node is executed at most once per update sweep.</p>
+                    <p><strong>Use Cases:</strong> Complex data flows with split-merge paths ("diamonds") where redundant calculations must be avoided.</p>
+                </div>
+                <div class="mode-info-card" style="border-left-color: var(--cat-exec);">
+                    <h3 style="color: var(--cat-exec);">Force Trigger</h3>
+                    <p><strong>Mechanism:</strong> Prevents nodes from automatically propagating updates downstream when inputs change. Output updates locally, but is only pushed downstream when the flow is manually run or triggered by a button node.</p>
+                    <p><strong>Use Cases:</strong> Staging changes or controlling propagation checkpoints without continuous automatic recalculation.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="index.js"></script>
+</body>
+</html>

@@ -34,6 +34,7 @@ class FlowExecutor:
         self.flow_changed = True
         self.graph = self.flow.graph_adj
         self.graph_rev = self.flow.graph_adj_rev
+        self.force_propagation = False
 
     # Node.update() =>
     def update_node(self, node: Node, inp: int):
@@ -93,6 +94,9 @@ class DataFlowNaive(FlowExecutor):
             return
         out.val = data
 
+        if getattr(node, 'force_trigger', False) and not getattr(self, 'force_propagation', False):
+            return
+
         for inp in self.graph[out]:
             inp.node.update(inp=inp.node.inputs.index(inp))
 
@@ -100,6 +104,9 @@ class DataFlowNaive(FlowExecutor):
     def exec_output(self, node: Node, index: int):
         out = node.outputs[index]
         if not out.type_ == 'exec':
+            return
+
+        if getattr(node, 'force_trigger', False) and not getattr(self, 'force_propagation', False):
             return
 
         for inp in self.graph[out]:
@@ -300,7 +307,7 @@ class DataFlowOptimized(DataFlowNaive):
     def propagate_output(self, out):
         """pushes an output's value to successors if it has been changed in the execution"""
 
-        if self.output_updated[out]:
+        if self.output_updated[out] and not (getattr(out.node, 'force_trigger', False) and not getattr(self, 'force_propagation', False)):
             # same procedure for data and exec connections
             for inp in self.graph[out]:
                 inp.node.update(inp=inp.node.inputs.index(inp))

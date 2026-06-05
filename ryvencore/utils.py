@@ -15,7 +15,10 @@ else:
     import importlib.metadata as importlib_metadata
 
 def pkg_version() -> str:
-    return importlib_metadata.version('ryvencore')
+    try:
+        return importlib_metadata.version('ryvencore')
+    except Exception:
+        return '0.3.1'
 
 
 def pkg_path(subpath: Optional[str] = None):
