@@ -35,7 +35,7 @@ Features:
 - material-inspired UI styling with pure HTML/CSS/JS and jQuery
 
 Run it locally:
-1. `cd /tmp/workspace/TomCallan/ryvencore`
+1. `cd /path/to/ryvencore`
 2. `python -m http.server`
 3. Open `http://localhost:8000/web/` in your browser and load a project JSON file
 

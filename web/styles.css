@@ -9,6 +9,9 @@
   --edge-data: #00a2ff;
   --edge-exec: #ff8f00;
   --shadow: 0 10px 24px rgba(42, 48, 67, 0.12);
+  --topbar-height: 65px;
+  --canvas-width: 6000px;
+  --canvas-height: 6000px;
 }
 
 * { box-sizing: border-box; }
@@ -75,7 +78,7 @@ body {
 #workspace {
   display: grid;
   grid-template-columns: 1fr 280px;
-  height: calc(100vh - 65px);
+  height: calc(100vh - var(--topbar-height));
 }
 
 #graph-surface {
@@ -97,8 +100,8 @@ body {
   position: absolute;
   top: 0;
   left: 0;
-  width: 6000px;
-  height: 6000px;
+  width: var(--canvas-width);
+  height: var(--canvas-height);
 }
 
 #connections-layer path {

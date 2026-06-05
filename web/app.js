@@ -3,6 +3,10 @@
   const HEADER_HEIGHT = 58;
   const ROW_HEIGHT = 28;
   const NODE_PADDING_ROWS = 1;
+  const MIN_BEND_DISTANCE = 60;
+  const BEND_FACTOR = 0.45;
+  const MIN_ZOOM_SCALE = 0.35;
+  const MAX_ZOOM_SCALE = 2.2;
 
   const state = {
     project: null,
@@ -103,7 +107,7 @@
 
   function normalizePortLabel(port, idx, fallbackPrefix) {
     if (!port) return `${fallbackPrefix} ${idx}`;
-    const label = (port.label || port.label_str || '').toString().trim();
+    const label = String(port.label || port.label_str || '').trim();
     return label || `${fallbackPrefix} ${idx}`;
   }
 
@@ -198,7 +202,10 @@
   }
 
   function renderConnections() {
-    const pathChunks = [];
+    const svgEl = $connectionsLayer[0];
+    while (svgEl.firstChild) {
+      svgEl.removeChild(svgEl.firstChild);
+    }
 
     for (const c of state.connections) {
       const fromNode = state.nodes[c.fromNode];
@@ -210,13 +217,14 @@
       const x1 = fromNode.x + NODE_WIDTH;
       const y2 = toNode.y + HEADER_HEIGHT + ROW_HEIGHT * (c.toPort + 0.5);
       const x2 = toNode.x;
-      const bend = Math.max(60, Math.abs(x2 - x1) * 0.45);
+      const bend = Math.max(MIN_BEND_DISTANCE, Math.abs(x2 - x1) * BEND_FACTOR);
       const d = `M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`;
 
-      pathChunks.push(`<path d="${d}" style="stroke:${edgeColor(outPort?.type_)}"></path>`);
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', d);
+      path.style.stroke = edgeColor(outPort?.type_);
+      svgEl.appendChild(path);
     }
-
-    $connectionsLayer.html(pathChunks.join(''));
     $('#connection-count').text(`Connections: ${state.connections.length}`);
   }
 
@@ -294,7 +302,7 @@
       event.preventDefault();
       const e = event.originalEvent;
       const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      const next = Math.min(2.2, Math.max(0.35, state.view.scale + delta));
+      const next = Math.min(MAX_ZOOM_SCALE, Math.max(MIN_ZOOM_SCALE, state.view.scale + delta));
       if (next === state.view.scale) return;
 
       const rect = $surface[0].getBoundingClientRect();
@@ -329,13 +337,13 @@
       }
 
       if (state.drag) {
-        const dx = (event.clientX - state.drag.startX) / state.view.scale;
-        const dy = (event.clientY - state.drag.startY) / state.view.scale;
+        const scaledDx = (event.clientX - state.drag.startX) / state.view.scale;
+        const scaledDy = (event.clientY - state.drag.startY) / state.view.scale;
         const node = state.nodes[state.drag.nodeIndex];
         if (!node) return;
 
-        node.x = state.drag.nodeStartX + dx;
-        node.y = state.drag.nodeStartY + dy;
+        node.x = state.drag.nodeStartX + scaledDx;
+        node.y = state.drag.nodeStartY + scaledDy;
         state.drag.$node.css('transform', `translate(${node.x}px, ${node.y}px)`);
         scheduleConnectionRender();
       }
