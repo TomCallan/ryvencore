@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ryvencore web frontend</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">ryvencore frontend</div>
+    <label class="file-input">
+      <input id="project-file" type="file" accept=".json,application/json" />
+      <span>Load project JSON</span>
+    </label>
+    <select id="flow-select" aria-label="Flow selector"></select>
+    <div class="stats">
+      <span id="node-count" class="pill">Nodes: 0</span>
+      <span id="connection-count" class="pill">Connections: 0</span>
+    </div>
+  </header>
+
+  <main id="workspace">
+    <div id="graph-surface">
+      <div id="graph-viewport">
+        <svg id="connections-layer" aria-hidden="true"></svg>
+        <div id="nodes-layer"></div>
+      </div>
+    </div>
+    <aside class="panel">
+      <h2>Instructions</h2>
+      <ol>
+        <li>Export a project JSON from your ryven/ryvencore workflow.</li>
+        <li>Load it with <strong>Load project JSON</strong>.</li>
+        <li>Pick a flow and pan (drag background), zoom (mouse wheel), and drag nodes.</li>
+      </ol>
+      <p class="muted">This viewer focuses on fast rendering of nodes and edges from serialized project data.</p>
+      <p id="status" class="status">Waiting for project file.</p>
+    </aside>
+  </main>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

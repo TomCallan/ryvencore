@@ -24,6 +24,21 @@ pip install .
 
 As an experimental library, the API is not fully stable and small breaking changes over time should be expected. Generally, the API is defined by what is included in the [docs](https://leon-thomm.github.io/ryvencore/).
 
+### Web frontend (HTML5 + jQuery)
+
+A lightweight browser-based frontend is available in `web/`.
+
+Features:
+- dynamic rendering of serialized ryvencore nodes and connections
+- support for multiple flows in one project
+- pan, zoom, and node dragging
+- material-inspired UI styling with pure HTML/CSS/JS and jQuery
+
+Run it locally:
+1. `cd /tmp/workspace/TomCallan/ryvencore`
+2. `python -m http.server`
+3. Open `http://localhost:8000/web/` in your browser and load a project JSON file
+
 ### Examples
 
 **loading a project** e.g. exported from Ryven
