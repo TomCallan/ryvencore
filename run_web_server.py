@@ -10,6 +10,38 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import ryvencore as rc
 
+import importlib
+
+# Ensure nodes folder is in sys.path
+nodes_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'nodes')
+if nodes_dir not in sys.path:
+    sys.path.append(nodes_dir)
+
+import nodes.base as nb
+from nodes.base import WebNode
+
+NODE_CLASSES = []
+
+def load_nodes_from_folder():
+    global NODE_CLASSES
+    NODE_CLASSES = []
+    for filename in os.listdir(nodes_dir):
+        if filename.endswith('.py') and filename not in ('__init__.py', 'base.py'):
+            module_name = filename[:-3]
+            try:
+                if module_name in sys.modules:
+                    module = importlib.reload(sys.modules[module_name])
+                else:
+                    module = importlib.import_module(module_name)
+                    
+                for attr_name in dir(module):
+                    attr = getattr(module, attr_name)
+                    if isinstance(attr, type) and issubclass(attr, rc.Node) and attr not in (rc.Node, WebNode):
+                        if attr not in NODE_CLASSES:
+                            NODE_CLASSES.append(attr)
+            except Exception as e:
+                print(f"Error loading module {module_name}: {e}")
+
 # Log messages captured from PrintNode
 log_messages = []
 global_execution_paused = False
@@ -64,408 +96,17 @@ def get_trigger_input_index(node, flow, downstream_set, start_node):
                     return idx
     return -1
 
-# Define custom node classes that inherit from ryvencore.Node
-class WebNode(rc.Node):
-    """Base Web Node with default coordinate state handling, timestep trigger, and downstream exec propagation support"""
-    def __init__(self, params):
-        super().__init__(params)
-        self.x = 100
-        self.y = 100
-        self.width = 200
-        self.height = 120
-        self.loop_enabled = False
-        self.loop_interval = 1.0
-        self.auto_exec_downstream = False
-        self.force_trigger = False
-        self._loop_thread = None
-        self._loop_running = False
 
-    def additional_data(self):
-        return {
-            'x': self.x,
-            'y': self.y,
-            'width': self.width,
-            'height': self.height,
-            'loop_enabled': self.loop_enabled,
-            'loop_interval': self.loop_interval,
-            'auto_exec_downstream': self.auto_exec_downstream,
-            'force_trigger': self.force_trigger
-        }
-
-    def load_additional_data(self, data):
-        self.x = data.get('x', 100)
-        self.y = data.get('y', 100)
-        self.width = data.get('width', 200)
-        self.height = data.get('height', 120)
-        self.loop_enabled = data.get('loop_enabled', False)
-        self.loop_interval = data.get('loop_interval', 1.0)
-        self.auto_exec_downstream = data.get('auto_exec_downstream', False)
-        self.force_trigger = data.get('force_trigger', False)
-        if self.loop_enabled:
-            self.start_loop()
-
-    def place_event(self):
-        if self.loop_enabled:
-            self.start_loop()
-
-    def remove_event(self):
-        self.stop_loop()
-
-    def start_loop(self):
-        self.stop_loop()
-        self._loop_running = True
-        import threading
-        self._loop_thread = threading.Thread(target=self._run_loop, daemon=True)
-        self._loop_thread.start()
-
-    def stop_loop(self):
-        self._loop_running = False
-        self._loop_thread = None
-
-    def _run_loop(self):
-        import time
-        while self._loop_running:
-            try:
-                self.update()
-            except Exception as e:
-                print(f"Error in loop update for node {self.global_id}: {e}")
-            time.sleep(max(0.1, self.loop_interval))
-
-    def update(self, inp=-1):
-        if global_execution_paused:
-            return
-        # Downstream execution propagation hook for exec mode
-        if self.flow.algorithm_mode() == 'exec' and getattr(self, 'auto_exec_downstream', False):
-            executor = self.flow.executor
-            if executor.updated_nodes is None:
-                downstream = get_downstream_nodes(self)
-                all_nodes = set(self.flow.nodes)
-                # Block updates on all non-downstream nodes (upstream and unrelated)
-                non_downstream = all_nodes - downstream
-                executor.updated_nodes = non_downstream
-                try:
-                    # Update ourselves first while blocking upstream updates
-                    super().update(inp)
-                    # Update downstream nodes one by one in topological order
-                    if downstream:
-                        sorted_downstream = topological_sort(downstream, self.flow)
-                        for node in sorted_downstream:
-                            if node in executor.updated_nodes:
-                                continue
-                            try:
-                                trigger_idx = get_trigger_input_index(node, self.flow, downstream, self)
-                                node.update(trigger_idx)
-                            except Exception as e:
-                                print(f"Error propagating exec to downstream node {node.global_id}: {e}")
-                finally:
-                    executor.updated_nodes = None
-                return
-
-        # Default behavior
-        super().update(inp)
-
-
-# Math Nodes
-class AddNode(WebNode):
-    title = 'Add'
-    init_inputs = [
-        rc.NodeInputType(label='A', default=rc.Data(0.0)),
-        rc.NodeInputType(label='B', default=rc.Data(0.0))
-    ]
-    init_outputs = [rc.NodeOutputType(label='sum')]
-
-    def update_event(self, inp=-1):
-        a = self.input(0).payload if self.input(0) else 0.0
-        b = self.input(1).payload if self.input(1) else 0.0
-        # Coerce to float/int if possible
-        try: a = float(a)
-        except: pass
-        try: b = float(b)
-        except: pass
-        self.set_output_val(0, rc.Data(a + b))
-
-
-class SubtractNode(WebNode):
-    title = 'Subtract'
-    init_inputs = [
-        rc.NodeInputType(label='A', default=rc.Data(0.0)),
-        rc.NodeInputType(label='B', default=rc.Data(0.0))
-    ]
-    init_outputs = [rc.NodeOutputType(label='diff')]
-
-    def update_event(self, inp=-1):
-        a = self.input(0).payload if self.input(0) else 0.0
-        b = self.input(1).payload if self.input(1) else 0.0
-        try: a = float(a)
-        except: pass
-        try: b = float(b)
-        except: pass
-        self.set_output_val(0, rc.Data(a - b))
-
-
-class MultiplyNode(WebNode):
-    title = 'Multiply'
-    init_inputs = [
-        rc.NodeInputType(label='A', default=rc.Data(1.0)),
-        rc.NodeInputType(label='B', default=rc.Data(1.0))
-    ]
-    init_outputs = [rc.NodeOutputType(label='prod')]
-
-    def update_event(self, inp=-1):
-        a = self.input(0).payload if self.input(0) else 1.0
-        b = self.input(1).payload if self.input(1) else 1.0
-        try: a = float(a)
-        except: pass
-        try: b = float(b)
-        except: pass
-        self.set_output_val(0, rc.Data(a * b))
-
-
-class DivideNode(WebNode):
-    title = 'Divide'
-    init_inputs = [
-        rc.NodeInputType(label='A', default=rc.Data(1.0)),
-        rc.NodeInputType(label='B', default=rc.Data(1.0))
-    ]
-    init_outputs = [rc.NodeOutputType(label='div')]
-
-    def update_event(self, inp=-1):
-        a = self.input(0).payload if self.input(0) else 1.0
-        b = self.input(1).payload if self.input(1) else 1.0
-        try: a = float(a)
-        except: pass
-        try: b = float(b)
-        except: pass
-        res = a / b if b != 0 else 0
-        self.set_output_val(0, rc.Data(res))
-
-
-# String Nodes
-class NumberNode(WebNode):
-    title = 'Number'
-    init_inputs = [rc.NodeInputType(label='val', default=rc.Data(0.0))]
-    init_outputs = [rc.NodeOutputType(label='out')]
-
-    def update_event(self, inp=-1):
-        v = self.input(0).payload if self.input(0) else 0.0
-        try: v = float(v)
-        except: pass
-        self.set_output_val(0, rc.Data(v))
-
-
-class StringNode(WebNode):
-    title = 'String'
-    init_inputs = [rc.NodeInputType(label='val', default=rc.Data('Hello'))]
-    init_outputs = [rc.NodeOutputType(label='out')]
-
-    def update_event(self, inp=-1):
-        v = self.input(0).payload if self.input(0) else ''
-        self.set_output_val(0, rc.Data(str(v)))
-
-
-class ConcatNode(WebNode):
-    title = 'Concat'
-    init_inputs = [
-        rc.NodeInputType(label='str1', default=rc.Data('')),
-        rc.NodeInputType(label='str2', default=rc.Data(''))
-    ]
-    init_outputs = [rc.NodeOutputType(label='out')]
-
-    def update_event(self, inp=-1):
-        s1 = str(self.input(0).payload if self.input(0) else '')
-        s2 = str(self.input(1).payload if self.input(1) else '')
-        self.set_output_val(0, rc.Data(s1 + s2))
-
-
-class UppercaseNode(WebNode):
-    title = 'Uppercase'
-    init_inputs = [rc.NodeInputType(label='text', default=rc.Data(''))]
-    init_outputs = [rc.NodeOutputType(label='out')]
-
-    def update_event(self, inp=-1):
-        t = str(self.input(0).payload if self.input(0) else '')
-        self.set_output_val(0, rc.Data(t.upper()))
-
-
-# Logic/Utility Nodes
-class CompareNode(WebNode):
-    title = 'Compare'
-    init_inputs = [
-        rc.NodeInputType(label='A', default=rc.Data(0.0)),
-        rc.NodeInputType(label='op (==, >, <)', default=rc.Data('==')),
-        rc.NodeInputType(label='B', default=rc.Data(0.0))
-    ]
-    init_outputs = [rc.NodeOutputType(label='res')]
-
-    def update_event(self, inp=-1):
-        a = self.input(0).payload if self.input(0) else 0.0
-        op = str(self.input(1).payload if self.input(1) else '==').strip()
-        b = self.input(2).payload if self.input(2) else 0.0
-        try:
-            a = float(a)
-            b = float(b)
-        except:
-            pass
-        
-        if op == '==': res = (a == b)
-        elif op == '>': res = (a > b)
-        elif op == '<': res = (a < b)
-        elif op == '>=': res = (a >= b)
-        elif op == '<=': res = (a <= b)
-        elif op == '!=': res = (a != b)
-        else: res = False
-        self.set_output_val(0, rc.Data(res))
-
-
-class IfElseNode(WebNode):
-    title = 'If/Else'
-    init_inputs = [
-        rc.NodeInputType(label='cond', default=rc.Data(False)),
-        rc.NodeInputType(label='true_val', default=rc.Data('True')),
-        rc.NodeInputType(label='false_val', default=rc.Data('False'))
-    ]
-    init_outputs = [rc.NodeOutputType(label='out')]
-
-    def update_event(self, inp=-1):
-        cond = bool(self.input(0).payload if self.input(0) else False)
-        t_val = self.input(1).payload if self.input(1) else None
-        f_val = self.input(2).payload if self.input(2) else None
-        self.set_output_val(0, rc.Data(t_val if cond else f_val))
-
-
-class RandomNode(WebNode):
-    title = 'Random'
-    init_inputs = [
-        rc.NodeInputType(label='min', default=rc.Data(0.0)),
-        rc.NodeInputType(label='max', default=rc.Data(1.0))
-    ]
-    init_outputs = [rc.NodeOutputType(label='val')]
-
-    def update_event(self, inp=-1):
-        import random
-        min_v = float(self.input(0).payload if self.input(0) else 0.0)
-        max_v = float(self.input(1).payload if self.input(1) else 1.0)
-        self.set_output_val(0, rc.Data(random.uniform(min_v, max_v)))
-
-
-class LogNode(WebNode):
-    title = 'Log'
-    init_inputs = [rc.NodeInputType(label='msg', default=rc.Data(''))]
-    init_outputs = [rc.NodeOutputType(label='out')]
-
-    def update_event(self, inp=-1):
-        msg = self.input(0).payload if self.input(0) else ''
-        log_str = f"Log Node {self.global_id}: {msg}"
-        print(log_str)
-        add_server_log(log_str)
-        self.set_output_val(0, rc.Data(msg))
-
-
-# Execution Nodes
-class TriggerNode(WebNode):
-    title = 'Trigger'
-    init_inputs = []
-    init_outputs = [rc.NodeOutputType(type_='exec', label='out')]
-
-    def update_event(self, inp=-1):
-        self.exec_output(0)
-
-
-class BranchNode(WebNode):
-    title = 'Branch'
-    init_inputs = [
-        rc.NodeInputType(type_='exec', label='in'),
-        rc.NodeInputType(type_='data', label='cond', default=rc.Data(False))
-    ]
-    init_outputs = [
-        rc.NodeOutputType(type_='exec', label='true'),
-        rc.NodeOutputType(type_='exec', label='false')
-    ]
-
-    def update_event(self, inp=-1):
-        if inp == 0:  # exec input triggered
-            cond = bool(self.input(1).payload if self.input(1) else False)
-            if cond:
-                self.exec_output(0)
-            else:
-                self.exec_output(1)
-
-
-class CounterNode(WebNode):
-    title = 'Counter'
-    init_inputs = [
-        rc.NodeInputType(type_='exec', label='inc'),
-        rc.NodeInputType(type_='exec', label='reset')
-    ]
-    init_outputs = [
-        rc.NodeOutputType(type_='exec', label='out'),
-        rc.NodeOutputType(type_='data', label='count')
-    ]
-
-    def __init__(self, params):
-        super().__init__(params)
-        self.count = 0
-
-    def update_event(self, inp=-1):
-        if inp == 0:
-            self.count += 1
-            self.set_output_val(1, rc.Data(self.count))
-            self.exec_output(0)
-        elif inp == 1:
-            self.count = 0
-            self.set_output_val(1, rc.Data(self.count))
-            self.exec_output(0)
-
-
-class ExecuteButtonNode(WebNode):
-    title = 'Execute Button'
-    init_inputs = []
-    init_outputs = [rc.NodeOutputType(type_='exec', label='trigger')]
-
-    def __init__(self, params):
-        super().__init__(params)
-        self.target_node_id = None
-
-    def additional_data(self):
-        d = super().additional_data()
-        d['target_node_id'] = self.target_node_id
-        return d
-
-    def load_additional_data(self, data):
-        super().load_additional_data(data)
-        self.target_node_id = data.get('target_node_id')
-
-    def update_event(self, inp=-1):
-        if self.target_node_id is not None:
-            target = next((node for node in self.flow.nodes if node.global_id == self.target_node_id), None)
-            if target:
-                print(f"[ExecuteButton] Triggering target node {target.global_id}")
-                try:
-                    exec_idx = -1
-                    for idx, inp_port in enumerate(target.inputs):
-                        if inp_port.type_ == 'exec':
-                            exec_idx = idx
-                            break
-                    self.flow.executor.force_propagation = True
-                    try:
-                        target.update(exec_idx)
-                    finally:
-                        self.flow.executor.force_propagation = False
-                except Exception as e:
-                    print(f"Error triggering target node from execute button: {e}")
-        self.exec_output(0)
-
-
-# List of node templates
-NODE_CLASSES = [
-    NumberNode, StringNode, AddNode, SubtractNode, MultiplyNode, DivideNode,
-    ConcatNode, UppercaseNode, CompareNode, IfElseNode, RandomNode, LogNode,
-    TriggerNode, BranchNode, CounterNode, ExecuteButtonNode
-]
-
-# Instantiate Session & Flow
+# Instantiate Session
 session = rc.Session()
+
+# Load node classes dynamically
+load_nodes_from_folder()
 session.register_node_types(NODE_CLASSES)
+
+# Import classes for default flow setup
+from basic_nodes import NumberNode, AddNode, LogNode
+
 flow = session.create_flow('main')
 
 # Setup default nodes for representation
@@ -536,6 +177,7 @@ def get_flow_state():
             'auto_exec_downstream': getattr(n, 'auto_exec_downstream', False),
             'force_trigger': getattr(n, 'force_trigger', False),
             'target_node_id': getattr(n, 'target_node_id', None),
+            'code': getattr(n, 'code', None),
             'inputs': inputs_data,
             'outputs': outputs_data
         })
@@ -553,7 +195,7 @@ def get_flow_state():
 
     return {
         'algorithm_mode': flow.algorithm_mode(),
-        'execution_paused': global_execution_paused,
+        'execution_paused': nb.global_execution_paused,
         'nodes': nodes_data,
         'connections': connections_data
     }
@@ -574,6 +216,8 @@ class APIRequestHandler(BaseHTTPRequestHandler):
         path = parsed_path.path
 
         if path == '/api/nodes':
+            load_nodes_from_folder()
+            session.register_node_types(NODE_CLASSES)
             nodes_templates = []
             for nc in NODE_CLASSES:
                 # build identifier for template details
@@ -588,7 +232,7 @@ class APIRequestHandler(BaseHTTPRequestHandler):
         elif path == '/api/flow':
             self.send_json_response(get_flow_state())
         elif path == '/api/logs':
-            self.send_json_response(log_messages)
+            self.send_json_response(nb.log_messages)
         else:
             # Serve static files from web_frontend folder
             filename = path.lstrip('/')
@@ -730,57 +374,42 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                 else:
                     self.send_error_response('Node not found')
 
-            elif path == '/api/update_loop':
+            elif path == '/api/update_node_property':
                 node_id = int(req.get('node_id'))
-                enabled = bool(req.get('enabled'))
-                interval = float(req.get('interval', 1.0))
+                name = req.get('name')
+                val = req.get('val')
                 
                 n = next((node for node in flow.nodes if node.global_id == node_id), None)
                 if n:
-                    n.loop_enabled = enabled
-                    n.loop_interval = interval
-                    if enabled:
-                        n.start_loop()
+                    # Safely coerce boolean and numeric types
+                    if val == 'true' or val is True:
+                        val = True
+                    elif val == 'false' or val is False:
+                        val = False
+                    elif val is None or val == '':
+                        val = None
                     else:
-                        n.stop_loop()
+                        try:
+                            if '.' in str(val):
+                                val = float(val)
+                            else:
+                                val = int(val)
+                        except ValueError:
+                            pass
+                    
+                    setattr(n, name, val)
+                    
+                    # Handle thread loop state if loop_enabled is modified
+                    if name == 'loop_enabled':
+                        if val:
+                            n.start_loop()
+                        else:
+                            n.stop_loop()
+                            
+                    n.update()
                     self.send_json_response({'status': 'success', 'flow': get_flow_state()})
                 else:
                     self.send_error_response('Node not found')
-
-            elif path == '/api/update_auto_exec':
-                node_id = int(req.get('node_id'))
-                enabled = bool(req.get('enabled'))
-                
-                n = next((node for node in flow.nodes if node.global_id == node_id), None)
-                if n:
-                    n.auto_exec_downstream = enabled
-                    self.send_json_response({'status': 'success', 'flow': get_flow_state()})
-                else:
-                    self.send_error_response('Node not found')
-
-            elif path == '/api/update_force_trigger':
-                node_id = int(req.get('node_id'))
-                enabled = bool(req.get('enabled'))
-                
-                n = next((node for node in flow.nodes if node.global_id == node_id), None)
-                if n:
-                    n.force_trigger = enabled
-                    self.send_json_response({'status': 'success', 'flow': get_flow_state()})
-                else:
-                    self.send_error_response('Node not found')
-
-            elif path == '/api/set_button_target':
-                b_id = int(req.get('button_node_id'))
-                t_id = req.get('target_node_id')
-                if t_id is not None:
-                    t_id = int(t_id)
-
-                button_node = next((node for node in flow.nodes if node.global_id == b_id), None)
-                if button_node:
-                    button_node.target_node_id = t_id
-                    self.send_json_response({'status': 'success', 'flow': get_flow_state()})
-                else:
-                    self.send_error_response('Button node not found')
 
             elif path == '/api/trigger_node':
                 node_id = int(req.get('node_id'))
@@ -804,7 +433,7 @@ class APIRequestHandler(BaseHTTPRequestHandler):
 
             elif path == '/api/set_paused':
                 paused = bool(req.get('paused'))
-                global_execution_paused = paused
+                nb.global_execution_paused = paused
                 self.send_json_response({'status': 'success', 'flow': get_flow_state()})
 
             elif path == '/api/clear':
@@ -815,7 +444,7 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                         n.stop_loop()
                 session.delete_flow(flow)
                 flow = session.create_flow(title)
-                global_execution_paused = False
+                nb.global_execution_paused = False
                 self.send_json_response({'status': 'success', 'flow': get_flow_state()})
 
             elif path == '/api/save':
@@ -843,7 +472,7 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                     flows = session.load(data)
                     if flows:
                         flow = flows[0]
-                    global_execution_paused = False
+                    nb.global_execution_paused = False
                     self.send_json_response({'status': 'success', 'flow': get_flow_state()})
                 else:
                     self.send_error_response('No saved project file found')
@@ -851,11 +480,11 @@ class APIRequestHandler(BaseHTTPRequestHandler):
             elif path == '/api/add_log':
                 msg = req.get('msg')
                 if msg:
-                    add_server_log(msg)
+                    nb.add_server_log(msg)
                 self.send_json_response({'status': 'success'})
 
             elif path == '/api/clear_logs':
-                log_messages.clear()
+                nb.log_messages.clear()
                 self.send_json_response({'status': 'success'})
 
             else:

@@ -1,0 +1,229 @@
+{
+    "GID": 49,
+    "version": "0.3.1",
+    "flows": {
+        "Example Flow": {
+            "GID": 50,
+            "algorithm mode": "data",
+            "nodes": [
+                {
+                    "GID": 51,
+                    "identifier": "NumberNode",
+                    "version": null,
+                    "state data": "gAV9lC4=",
+                    "additional data": {
+                        "x": 100,
+                        "y": 100,
+                        "width": 200,
+                        "height": 120,
+                        "loop_enabled": false,
+                        "loop_interval": 1.0,
+                        "auto_exec_downstream": false,
+                        "force_trigger": false
+                    },
+                    "inputs": [
+                        {
+                            "GID": 52,
+                            "type": "data",
+                            "label": "val",
+                            "default": {
+                                "GID": 54,
+                                "identifier": "Data",
+                                "serialized": "gAWVCgAAAAAAAABHQCQAAAAAAAAu"
+                            }
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "GID": 53,
+                            "type": "data",
+                            "label": "out"
+                        }
+                    ]
+                },
+                {
+                    "GID": 56,
+                    "identifier": "NumberNode",
+                    "version": null,
+                    "state data": "gAV9lC4=",
+                    "additional data": {
+                        "x": 100,
+                        "y": 250,
+                        "width": 200,
+                        "height": 120,
+                        "loop_enabled": false,
+                        "loop_interval": 1.0,
+                        "auto_exec_downstream": false,
+                        "force_trigger": false
+                    },
+                    "inputs": [
+                        {
+                            "GID": 57,
+                            "type": "data",
+                            "label": "val",
+                            "default": {
+                                "GID": 59,
+                                "identifier": "Data",
+                                "serialized": "gAWVCgAAAAAAAABHQBQAAAAAAAAu"
+                            }
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "GID": 58,
+                            "type": "data",
+                            "label": "out"
+                        }
+                    ]
+                },
+                {
+                    "GID": 61,
+                    "identifier": "AddNode",
+                    "version": null,
+                    "state data": "gAV9lC4=",
+                    "additional data": {
+                        "x": 350,
+                        "y": 150,
+                        "width": 200,
+                        "height": 120,
+                        "loop_enabled": false,
+                        "loop_interval": 1.0,
+                        "auto_exec_downstream": false,
+                        "force_trigger": false
+                    },
+                    "inputs": [
+                        {
+                            "GID": 62,
+                            "type": "data",
+                            "label": "A",
+                            "default": {
+                                "GID": 0,
+                                "identifier": "Data",
+                                "serialized": "gAWVCgAAAAAAAABHAAAAAAAAAAAu"
+                            }
+                        },
+                        {
+                            "GID": 63,
+                            "type": "data",
+                            "label": "B",
+                            "default": {
+                                "GID": 1,
+                                "identifier": "Data",
+                                "serialized": "gAWVCgAAAAAAAABHAAAAAAAAAAAu"
+                            }
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "GID": 64,
+                            "type": "data",
+                            "label": "sum"
+                        }
+                    ]
+                },
+                {
+                    "GID": 67,
+                    "identifier": "LogNode",
+                    "version": null,
+                    "state data": "gAV9lC4=",
+                    "additional data": {
+                        "x": 600,
+                        "y": 180,
+                        "width": 200,
+                        "height": 120,
+                        "loop_enabled": false,
+                        "loop_interval": 1.0,
+                        "auto_exec_downstream": false,
+                        "force_trigger": false
+                    },
+                    "inputs": [
+                        {
+                            "GID": 68,
+                            "type": "data",
+                            "label": "msg",
+                            "default": {
+                                "GID": 21,
+                                "identifier": "Data",
+                                "serialized": "gAWVBAAAAAAAAACMAJQu"
+                            }
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "GID": 69,
+                            "type": "data",
+                            "label": "out"
+                        }
+                    ]
+                }
+            ],
+            "connections": [
+                {
+                    "parent node index": 0,
+                    "output port index": 0,
+                    "connected node": 2,
+                    "connected input port index": 0
+                },
+                {
+                    "parent node index": 1,
+                    "output port index": 0,
+                    "connected node": 2,
+                    "connected input port index": 1
+                },
+                {
+                    "parent node index": 2,
+                    "output port index": 0,
+                    "connected node": 3,
+                    "connected input port index": 0
+                }
+            ],
+            "output data": [
+                {
+                    "data": {
+                        "GID": 55,
+                        "identifier": "Data",
+                        "serialized": "gAWVCgAAAAAAAABHQCQAAAAAAAAu"
+                    },
+                    "dependent node outputs": [
+                        0,
+                        0
+                    ]
+                },
+                {
+                    "data": {
+                        "GID": 60,
+                        "identifier": "Data",
+                        "serialized": "gAWVCgAAAAAAAABHQBQAAAAAAAAu"
+                    },
+                    "dependent node outputs": [
+                        1,
+                        0
+                    ]
+                },
+                {
+                    "data": {
+                        "GID": 66,
+                        "identifier": "Data",
+                        "serialized": "gAWVCgAAAAAAAABHQC4AAAAAAAAu"
+                    },
+                    "dependent node outputs": [
+                        2,
+                        0
+                    ]
+                },
+                {
+                    "data": {
+                        "GID": 70,
+                        "identifier": "Data",
+                        "serialized": "gAWVCgAAAAAAAABHQC4AAAAAAAAu"
+                    },
+                    "dependent node outputs": [
+                        3,
+                        0
+                    ]
+                }
+            ]
+        }
+    },
+    "addons": {}
+}

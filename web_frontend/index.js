@@ -49,7 +49,7 @@ $(function() {
     function getNodeCategory(title) {
         if (['Add', 'Subtract', 'Multiply', 'Divide'].includes(title)) return 'Math';
         if (['Number', 'String', 'Concat', 'Uppercase'].includes(title)) return 'String';
-        if (['Compare', 'If/Else'].includes(title)) return 'Logic';
+        if (['Compare', 'If/Else', 'Python REPL'].includes(title)) return 'Logic';
         if (['Random', 'Log'].includes(title)) return 'Utility';
         if (['Trigger', 'Branch', 'Counter'].includes(title)) return 'Exec';
         return 'Utility';
@@ -210,6 +210,48 @@ $(function() {
                             </button>
                         </div>
                     `);
+                }
+            } else if (n.title === 'Python REPL') {
+                if (nodeEl.find('.node-custom-content').length === 0) {
+                    nodeEl.find('.node-ports').after(`
+                        <div class="node-custom-content" style="padding: 0 14px 10px 14px; display: flex; flex-direction: column; gap: 4px;">
+                            <label style="font-size: 0.75rem; color: var(--text-secondary);">Python Code:</label>
+                            <textarea class="repl-code-input" data-node="${n.id}" style="width: 100%; height: 80px; font-family: monospace; font-size: 0.75rem; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; resize: vertical; padding: 4px; border-radius: 4px;"></textarea>
+                        </div>
+                    `);
+                    
+                    let textarea = nodeEl.find('.repl-code-input');
+                    textarea.val(n.code || '');
+                    
+                    // Prevent node dragging when interacting with textarea
+                    textarea.on('mousedown selectstart', function(e) {
+                        e.stopPropagation();
+                    });
+                    
+                    // Update on blur or change
+                    textarea.on('change', function() {
+                        let codeVal = $(this).val();
+                        $.ajax({
+                            url: '/api/update_node_property',
+                            type: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({
+                                node_id: n.id,
+                                name: 'code',
+                                val: codeVal
+                            }),
+                            success: function(response) {
+                                if (response.status === 'success') {
+                                    // Optional: loadFlow();
+                                }
+                            }
+                        });
+                    });
+                } else {
+                    let textarea = nodeEl.find('.repl-code-input');
+                    if (!textarea.is(':focus')) {
+                        textarea.val(n.code || '');
+                    }
                 }
             } else {
                 nodeEl.find('.node-custom-content').remove();
@@ -911,20 +953,19 @@ $(function() {
         $(document).on('change', '.loop-toggle', function() {
             let nodeId = $(this).attr('data-node');
             let enabled = $(this).is(':checked');
-            let interval = parseFloat($(`.loop-interval[data-node="${nodeId}"]`).val()) || 1.0;
 
             $.ajax({
-                url: '/api/update_loop',
+                url: '/api/update_node_property',
                 method: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({
                     node_id: nodeId,
-                    enabled: enabled,
-                    interval: interval
+                    name: 'loop_enabled',
+                    val: enabled
                 }),
                 success: function() {
                     loadFlow();
-                    addLog(`Toggled repeat loop for Node ${nodeId}: ${enabled ? 'Enabled (' + interval + 's)' : 'Disabled'}`);
+                    addLog(`Toggled repeat loop for Node ${nodeId}: ${enabled ? 'Enabled' : 'Disabled'}`);
                 }
             });
         });
@@ -932,17 +973,16 @@ $(function() {
         // Loop interval text input change handler
         $(document).on('change', '.loop-interval', function() {
             let nodeId = $(this).attr('data-node');
-            let enabled = $(`.loop-toggle[data-node="${nodeId}"]`).is(':checked');
             let interval = parseFloat($(this).val()) || 1.0;
 
             $.ajax({
-                url: '/api/update_loop',
+                url: '/api/update_node_property',
                 method: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({
                     node_id: nodeId,
-                    enabled: enabled,
-                    interval: interval
+                    name: 'loop_interval',
+                    val: interval
                 }),
                 success: function() {
                     loadFlow();
@@ -988,12 +1028,13 @@ $(function() {
             let enabled = $(this).is(':checked');
 
             $.ajax({
-                url: '/api/update_force_trigger',
+                url: '/api/update_node_property',
                 method: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({
                     node_id: nodeId,
-                    enabled: enabled
+                    name: 'force_trigger',
+                    val: enabled
                 }),
                 success: function() {
                     loadFlow();
@@ -1030,12 +1071,13 @@ $(function() {
             if (wire.hasClass('virtual-trigger')) {
                 if (confirm('Delete this virtual trigger link?')) {
                     $.ajax({
-                        url: '/api/set_button_target',
+                        url: '/api/update_node_property',
                         method: 'POST',
                         contentType: 'application/json',
                         data: JSON.stringify({
-                            button_node_id: pNodeId,
-                            target_node_id: null
+                            node_id: pNodeId,
+                            name: 'target_node_id',
+                            val: null
                         }),
                         success: function() {
                             wire.remove();
@@ -1157,12 +1199,13 @@ $(function() {
                         let targetCard = target.closest('.node-card');
                         if (targetCard.length > 0 && targetCard.attr('data-id') !== nodeId) {
                             $.ajax({
-                                url: '/api/set_button_target',
+                                url: '/api/update_node_property',
                                 method: 'POST',
                                 contentType: 'application/json',
                                 data: JSON.stringify({
-                                    button_node_id: nodeId,
-                                    target_node_id: targetCard.attr('data-id')
+                                    node_id: nodeId,
+                                    name: 'target_node_id',
+                                    val: targetCard.attr('data-id')
                                 }),
                                 success: function() {
                                     loadFlow();
