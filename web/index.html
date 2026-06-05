@@ -16,6 +16,11 @@
       <input id="project-file" type="file" accept=".json,application/json" />
       <span>Load project JSON</span>
     </label>
+    <button id="add-node" class="btn">Add node</button>
+    <button id="delete-node" class="btn">Delete node</button>
+    <button id="connect-mode" class="btn">Connect ports</button>
+    <button id="run-flow" class="btn btn-primary">Run flow</button>
+    <button id="export-json" class="btn">Export JSON</button>
     <select id="flow-select" aria-label="Flow selector"></select>
     <div class="stats">
       <span id="node-count" class="pill">Nodes: 0</span>
@@ -31,14 +36,15 @@
       </div>
     </div>
     <aside class="panel">
-      <h2>Instructions</h2>
+      <h2>Editor + runner</h2>
       <ol>
-        <li>Export a project JSON from your ryven/ryvencore workflow.</li>
-        <li>Load it with <strong>Load project JSON</strong>.</li>
-        <li>Pick a flow and pan (drag background), zoom (mouse wheel), and drag nodes.</li>
+        <li>Load a project JSON file.</li>
+        <li>Select, drag, add, delete, and connect nodes.</li>
+        <li>Use <strong>Run flow</strong> to simulate topological execution and inspect the trace.</li>
       </ol>
-      <p class="muted">This viewer focuses on fast rendering of nodes and edges from serialized project data.</p>
+      <p class="muted">Runner is a browser-side simulation based on graph structure (no Python node logic execution).</p>
       <p id="status" class="status">Waiting for project file.</p>
+      <pre id="run-output" class="run-output">No run yet.</pre>
     </aside>
   </main>
 

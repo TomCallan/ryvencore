@@ -6,6 +6,7 @@
   --text-soft: #697086;
   --line: #dce0ee;
   --primary: #6750a4;
+  --primary-2: #8069c6;
   --edge-data: #00a2ff;
   --edge-exec: #ff8f00;
   --shadow: 0 10px 24px rgba(42, 48, 67, 0.12);
@@ -28,8 +29,8 @@ body {
   z-index: 20;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: 8px;
+  padding: 10px 14px;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
 }
@@ -37,7 +38,7 @@ body {
 .brand {
   font-weight: 700;
   letter-spacing: 0.2px;
-  margin-right: 8px;
+  margin-right: 6px;
 }
 
 .file-input {
@@ -58,11 +59,29 @@ body {
   cursor: pointer;
 }
 
+.btn,
 #flow-select {
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--surface);
   padding: 8px 10px;
+  font-size: 12px;
+}
+
+.btn {
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn:hover { background: var(--surface-2); }
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--primary-2); }
+.btn.active {
+  background: #ede8fb;
+  border-color: #cfbdfc;
 }
 
 .stats { margin-left: auto; display: flex; gap: 8px; }
@@ -77,7 +96,7 @@ body {
 
 #workspace {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: 1fr 320px;
   height: calc(100vh - var(--topbar-height));
 }
 
@@ -119,6 +138,14 @@ body {
   box-shadow: var(--shadow);
   overflow: hidden;
 }
+.node.selected {
+  border-color: #967ed8;
+  box-shadow: 0 0 0 2px rgba(150, 126, 216, 0.3), var(--shadow);
+}
+.node.running {
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25), var(--shadow);
+}
 
 .node-header {
   background: linear-gradient(125deg, #6f58ad 0%, #5b7fca 100%);
@@ -156,6 +183,8 @@ body {
   font-size: 12px;
   color: #444a5f;
 }
+.port-row.selectable { cursor: crosshair; }
+.port-row.pending { background: #ede8fb; border-radius: 6px; }
 .port-col.outputs .port-row { justify-content: flex-end; }
 .port-dot {
   width: 10px;
@@ -189,8 +218,21 @@ body {
   background: var(--surface-2);
   font-size: 13px;
 }
+.run-output {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #0f172a;
+  color: #cbd5e1;
+  font-size: 12px;
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
 
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
   #workspace { grid-template-columns: 1fr; }
   .panel { display: none; }
+  .stats { display: none; }
 }
