@@ -29,15 +29,20 @@ As an experimental library, the API is not fully stable and small breaking chang
 A lightweight browser-based frontend is available in `web/`.
 
 Features:
-- dynamic rendering of serialized ryvencore nodes and connections
+- dynamic rendering and editing of serialized ryvencore nodes and connections
 - support for multiple flows in one project
 - pan, zoom, and node dragging
+- add node, delete node, create connections, and export edited JSON
+- built-in browser-side flow runner simulation with execution trace
 - material-inspired UI styling with pure HTML/CSS/JS and jQuery
 
 Run it locally:
-1. `cd /path/to/ryvencore`
+1. `cd ryvencore`
 2. `python -m http.server`
 3. Open `http://localhost:8000/web/` in your browser and load a project JSON file
+
+Runner note:
+- the web runner simulates graph execution order from structure only; it does not execute Python node logic in-browser
 
 ### Examples
 

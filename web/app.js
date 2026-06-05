@@ -7,6 +7,8 @@
   const BEND_FACTOR = 0.45;
   const MIN_ZOOM_SCALE = 0.35;
   const MAX_ZOOM_SCALE = 2.2;
+  const RUN_STEP_DELAY_MS = 220;
+  const RUN_FINAL_DELAY_MS = 400;
 
   const state = {
     project: null,
@@ -352,8 +354,8 @@
   function addNode() {
     const title = prompt('Node title:', `Node ${state.nodes.length + 1}`);
     if (title === null) return;
-    const inCount = Math.max(0, Number(prompt('Number of inputs:', '1') || '1') | 0);
-    const outCount = Math.max(0, Number(prompt('Number of outputs:', '1') || '1') | 0);
+    const inCount = Math.max(0, Math.floor(Number(prompt('Number of inputs:', '1') || '1')));
+    const outCount = Math.max(0, Math.floor(Number(prompt('Number of outputs:', '1') || '1')));
 
     const node = {
       index: state.nodes.length,
@@ -468,12 +470,12 @@
       setTimeout(() => {
         $nodes.removeClass('running');
         $(`.node[data-node-index="${idx}"]`).addClass('running');
-      }, i * 220);
+      }, i * RUN_STEP_DELAY_MS);
     });
 
     setTimeout(() => {
       $nodes.removeClass('running');
-    }, order.length * 220 + 400);
+    }, order.length * RUN_STEP_DELAY_MS + RUN_FINAL_DELAY_MS);
   }
 
   function runFlowSimulation() {
