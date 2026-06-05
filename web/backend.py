@@ -11,6 +11,7 @@ from ryvencore.web_backend import example_node_schemas, run_project
 
 
 WEB_DIR = Path(__file__).resolve().parent
+MAX_BODY_SIZE = 1_000_000
 
 
 class WebHandler(SimpleHTTPRequestHandler):
@@ -42,6 +43,9 @@ class WebHandler(SimpleHTTPRequestHandler):
 
         try:
             length = int(self.headers.get('Content-Length', '0'))
+            if length < 0 or length > MAX_BODY_SIZE:
+                self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {'error': 'Request body too large'})
+                return
             body = self.rfile.read(length)
             payload = json.loads(body.decode('utf-8') if body else '{}')
         except (ValueError, json.JSONDecodeError):

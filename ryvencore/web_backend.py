@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from typing import Any, Dict, List, Optional, Sequence, Type
 
 from .Data import Data
@@ -19,6 +20,13 @@ class NumberNode(Node):
 
     def update_event(self, inp=-1):
         self.set_output_val(0, Data(self.value))
+
+    def additional_data(self) -> Dict[str, Any]:
+        return {'value': self.value}
+
+    def load_additional_data(self, data: Dict[str, Any]):
+        if isinstance(data, dict) and isinstance(data.get('value'), (int, float)):
+            self.value = float(data['value'])
 
     def get_state(self) -> Dict[str, Any]:
         return {'value': self.value}
@@ -109,7 +117,47 @@ def _connected_predecessor_count(flow, node: Node) -> int:
     return sum(1 for inp in node.inputs if flow.connected_output(inp) is not None)
 
 
+def _sanitize_node_data(node_data: Dict[str, Any]) -> Dict[str, Any]:
+    sanitized = copy.deepcopy(node_data)
+    sanitized.pop('state data', None)
+
+    for inp in sanitized.get('inputs', []):
+        if isinstance(inp, dict):
+            inp.pop('default', None)
+
+    return sanitized
+
+
+def _sanitize_flow_data(flow_data: Dict[str, Any]) -> Dict[str, Any]:
+    sanitized = copy.deepcopy(flow_data)
+    sanitized['nodes'] = [_sanitize_node_data(node) for node in sanitized.get('nodes', [])]
+    sanitized['output data'] = []
+    return sanitized
+
+
+def _sanitize_project(project: Dict[str, Any]) -> Dict[str, Any]:
+    sanitized = copy.deepcopy(project)
+    sanitized['addons'] = {}
+
+    if 'scripts' in sanitized and isinstance(sanitized['scripts'], dict):
+        for script in sanitized['scripts'].values():
+            if isinstance(script, dict) and isinstance(script.get('flow'), dict):
+                script['flow'] = _sanitize_flow_data(script['flow'])
+        return sanitized
+
+    flows = sanitized.get('flows')
+    if isinstance(flows, dict):
+        sanitized['flows'] = {name: _sanitize_flow_data(flow) for name, flow in flows.items()}
+    elif isinstance(flows, list):
+        sanitized['flows'] = [_sanitize_flow_data(flow) for flow in flows]
+    else:
+        sanitized['flows'] = {}
+
+    return sanitized
+
+
 def run_project(project: Dict[str, Any], flow_index: int = 0) -> Dict[str, Any]:
+    project = _sanitize_project(project)
     session = Session()
     session.register_node_types(list(EXAMPLE_NODE_TYPES))
     session.load(project)
