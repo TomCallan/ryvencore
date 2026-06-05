@@ -186,3 +186,28 @@ if (n.title === 'Power') {
 
 ### Step 4: Interact & Save
 Refresh your browser. Drag the new node onto the canvas, hook up its inputs/outputs, and verify its downstream effects. Use the **Save** button to store the custom setup.
+
+---
+
+## Running Graphs in CLI (Bypassing Web UI)
+
+You can run your saved node graphs completely from the command line, bypassing the web UI overhead. The backend execution is fully managed by ryvencore's core logic.
+
+### How to Run:
+Run `run_cli.py` with the path to your JSON flow project file:
+```bash
+python run_cli.py flow_project.json
+```
+or load a flow by name from the `saved_flows/` directory:
+```bash
+python run_cli.py my_custom_flow
+```
+
+### Implementation Details:
+The CLI runner `run_cli.py`:
+1. Scans and dynamically imports all node classes in `nodes/`.
+2. Registers them into a `ryvencore.Session`.
+3. Loads/deserializes the JSON project file.
+4. Automatically spins up looping/timer nodes in background daemon threads and handles graph updates using the ryvencore engine.
+5. Captures and prints execution outputs (e.g. from `LogNode`) directly to stdout.
+6. Gracefully terminates all active loops upon receiving `Ctrl+C`.
