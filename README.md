@@ -24,7 +24,7 @@ pip install .
 
 As an experimental library, the API is not fully stable and small breaking changes over time should be expected. Generally, the API is defined by what is included in the [docs](https://leon-thomm.github.io/ryvencore/).
 
-### Web frontend (HTML5 + jQuery)
+### Web frontend (HTML5 + jQuery + Python backend)
 
 A lightweight browser-based frontend is available in `web/`.
 
@@ -33,16 +33,27 @@ Features:
 - support for multiple flows in one project
 - pan, zoom, and node dragging
 - add node, delete node, create connections, and export edited JSON
-- built-in browser-side flow runner simulation with execution trace
+- backend-powered flow execution using real Python ryvencore nodes
 - material-inspired UI styling with pure HTML/CSS/JS and jQuery
 
 Run it locally:
 1. `cd ryvencore`
-2. `python -m http.server`
-3. Open `http://localhost:8000/web/` in your browser and load a project JSON file
+2. `python web/backend.py`
+3. Open `http://localhost:8000/` in your browser and load a project JSON file
 
-Runner note:
-- the web runner simulates graph execution order from structure only; it does not execute Python node logic in-browser
+The backend currently ships with a few example Python node types:
+- `NumberNode` (constant numeric value)
+- `AddNode` (sum of two inputs)
+- `MultiplyNode` (multiply two inputs)
+- `PrintNode` (prints incoming value and records it in run output)
+
+### Creating more backend node types
+
+1. Subclass `ryvencore.Node` and define `init_inputs` / `init_outputs`.
+2. Implement `update_event()` with your Python logic.
+3. If the node has persistent config/state, implement `get_state()` and `set_state()`.
+4. Register the node class in `EXAMPLE_NODE_TYPES` in `ryvencore/web_backend.py`.
+5. Restart `python web/backend.py`; the web editor will load the new node type from `/api/node-types`.
 
 ### Examples
 

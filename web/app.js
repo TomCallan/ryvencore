@@ -7,9 +7,6 @@
   const BEND_FACTOR = 0.45;
   const MIN_ZOOM_SCALE = 0.35;
   const MAX_ZOOM_SCALE = 2.2;
-  const RUN_STEP_DELAY_MS = 220;
-  const RUN_FINAL_DELAY_MS = 400;
-
   const state = {
     project: null,
     flows: [],
@@ -23,6 +20,7 @@
     rafQueued: false,
     pan: null,
     drag: null,
+    nodeTypes: [],
   };
 
   const $surface = $('#graph-surface');
@@ -40,6 +38,26 @@
 
   function writeRunOutput(lines) {
     $runOutput.text(lines.join('\n'));
+  }
+
+  async function apiJsonRequest(path, options = {}) {
+    const response = await fetch(path, {
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+      ...options,
+    });
+
+    let data = {};
+    try {
+      data = await response.json();
+    } catch (error) {
+      data = {};
+    }
+
+    if (!response.ok) {
+      throw new Error(data.error || `Request failed with HTTP ${response.status}.`);
+    }
+
+    return data;
   }
 
   function normalizeFlows(data) {
@@ -352,24 +370,35 @@
   }
 
   function addNode() {
-    const title = prompt('Node title:', `Node ${state.nodes.length + 1}`);
-    if (title === null) return;
-    const inCount = Math.max(0, Math.floor(Number(prompt('Number of inputs:', '1') || '1')));
-    const outCount = Math.max(0, Math.floor(Number(prompt('Number of outputs:', '1') || '1')));
+    if (state.nodeTypes.length === 0) {
+      setStatus('No node types available from backend.');
+      return;
+    }
+
+    const typeList = state.nodeTypes
+      .map((type, i) => `${i + 1}. ${type.title} (${type.identifier})`)
+      .join('\n');
+    const selected = Number(prompt(`Select node type:\n${typeList}`, '1'));
+    if (!Number.isInteger(selected) || selected < 1 || selected > state.nodeTypes.length) {
+      setStatus('Node creation cancelled.');
+      return;
+    }
+
+    const nodeType = state.nodeTypes[selected - 1];
 
     const node = {
       index: state.nodes.length,
       raw: {
-        identifier: title.replace(/\s+/g, '_'),
-        title,
-        inputs: [],
-        outputs: [],
+        identifier: nodeType.identifier,
+        title: nodeType.title,
+        inputs: nodeType.inputs.map((port) => ({ label: port.label, type_: port.type_ })),
+        outputs: nodeType.outputs.map((port) => ({ label: port.label, type_: port.type_ })),
         'additional data': {},
       },
-      title,
-      subtitle: title.replace(/\s+/g, '_'),
-      inputs: Array.from({ length: inCount }).map((_, i) => ({ label: `In ${i}`, type_: 'data' })),
-      outputs: Array.from({ length: outCount }).map((_, i) => ({ label: `Out ${i}`, type_: 'data' })),
+      title: nodeType.title,
+      subtitle: nodeType.identifier,
+      inputs: nodeType.inputs.map((port) => ({ label: port.label, type_: port.type_ })),
+      outputs: nodeType.outputs.map((port) => ({ label: port.label, type_: port.type_ })),
       x: 120 + (state.nodes.length % 4) * 320,
       y: 120 + Math.floor(state.nodes.length / 4) * 220,
     };
@@ -379,7 +408,7 @@
     commitCurrentFlowData();
     renderNodes();
     scheduleConnectionRender();
-    setStatus(`Added node "${title}".`);
+    setStatus(`Added node "${nodeType.title}".`);
   }
 
   function deleteSelectedNode() {
@@ -462,73 +491,43 @@
     setStatus('Exported edited project JSON.');
   }
 
-  function animateRun(order) {
-    const $nodes = $('.node');
-    $nodes.removeClass('running');
-
-    order.forEach((idx, i) => {
-      setTimeout(() => {
-        $nodes.removeClass('running');
-        $(`.node[data-node-index="${idx}"]`).addClass('running');
-      }, i * RUN_STEP_DELAY_MS);
-    });
-
-    setTimeout(() => {
-      $nodes.removeClass('running');
-    }, order.length * RUN_STEP_DELAY_MS + RUN_FINAL_DELAY_MS);
-  }
-
-  function runFlowSimulation() {
-    if (state.nodes.length === 0) {
-      setStatus('Load or create nodes before running.');
+  async function runFlowViaBackend() {
+    if (!state.project) {
+      setStatus('Load or create a project before running.');
       return;
     }
 
-    const indegree = Array(state.nodes.length).fill(0);
-    const next = Array.from({ length: state.nodes.length }, () => []);
+    commitCurrentFlowData();
+    setStatus('Running Python backend...');
 
-    for (const c of state.connections) {
-      if (!state.nodes[c.fromNode] || !state.nodes[c.toNode]) continue;
-      indegree[c.toNode] += 1;
-      next[c.fromNode].push(c.toNode);
+    try {
+      const result = await apiJsonRequest('/api/run', {
+        method: 'POST',
+        body: JSON.stringify({
+          project: state.project,
+          flowIndex: state.selectedFlowIndex,
+        }),
+      });
+      writeRunOutput(result.trace || ['Run completed with no output.']);
+      setStatus('Run complete (Python backend).');
+    } catch (error) {
+      setStatus(`Run failed: ${error.message}`);
     }
+  }
 
-    const queue = [];
-    indegree.forEach((d, i) => { if (d === 0) queue.push(i); });
-
-    const order = [];
-    while (queue.length) {
-      const nodeIndex = queue.shift();
-      order.push(nodeIndex);
-      for (const succ of next[nodeIndex]) {
-        indegree[succ] -= 1;
-        if (indegree[succ] === 0) queue.push(succ);
+  async function loadNodeTypes() {
+    try {
+      const result = await apiJsonRequest('/api/node-types');
+      state.nodeTypes = Array.isArray(result.node_types) ? result.node_types : [];
+      if (state.nodeTypes.length === 0) {
+        setStatus('Backend returned no node types.');
+      } else {
+        setStatus(`Loaded ${state.nodeTypes.length} node type(s) from backend.`);
       }
+    } catch (error) {
+      state.nodeTypes = [];
+      setStatus(`Failed to load backend node types: ${error.message}`);
     }
-
-    const hasCycle = order.length !== state.nodes.length;
-    const trace = [];
-    trace.push(`Flow: ${state.flows[state.selectedFlowIndex]?.title || 'Untitled'}`);
-    trace.push(`Nodes: ${state.nodes.length}, Connections: ${state.connections.length}`);
-    trace.push(`Mode: browser simulation`);
-
-    if (hasCycle) {
-      trace.push('Cycle detected: fallback execution order applied for remaining nodes.');
-      for (let i = 0; i < state.nodes.length; i += 1) {
-        if (!order.includes(i)) order.push(i);
-      }
-    }
-
-    for (let step = 0; step < order.length; step += 1) {
-      const nodeIndex = order[step];
-      const node = state.nodes[nodeIndex];
-      const outCount = state.connections.filter((c) => c.fromNode === nodeIndex).length;
-      trace.push(`${step + 1}. ${node.title} (${node.subtitle}) -> ${outCount} outgoing`);
-    }
-
-    writeRunOutput(trace);
-    animateRun(order);
-    setStatus(`Run complete (${order.length} nodes simulated${hasCycle ? ', cycle detected' : ''}).`);
   }
 
   function bindPanAndZoom() {
@@ -622,7 +621,7 @@
     $('#delete-node').on('click', deleteSelectedNode);
     $('#connect-mode').on('click', () => setConnectMode(!state.connectMode));
     $('#export-json').on('click', exportProject);
-    $('#run-flow').on('click', runFlowSimulation);
+    $('#run-flow').on('click', () => { void runFlowViaBackend(); });
 
     $nodesLayer.on('click', '.node', function onNodeClick(event) {
       if ($(event.target).closest('.port-row').length) return;
@@ -655,6 +654,7 @@
     bindUi();
     bindPanAndZoom();
     applyViewTransform();
+    void loadNodeTypes();
   }
 
   init();

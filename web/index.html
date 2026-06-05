@@ -36,13 +36,13 @@
       </div>
     </div>
     <aside class="panel">
-      <h2>Editor + runner</h2>
+      <h2>Editor + Python runner</h2>
       <ol>
         <li>Load a project JSON file.</li>
         <li>Select, drag, add, delete, and connect nodes.</li>
-        <li>Use <strong>Run flow</strong> to simulate topological execution and inspect the trace.</li>
+        <li>Use <strong>Run flow</strong> to execute Python node logic on the backend and inspect the trace.</li>
       </ol>
-      <p class="muted">Runner is a browser-side simulation based on graph structure (no Python node logic execution).</p>
+      <p class="muted">Runner executes through the backend API and uses real ryvencore Python nodes.</p>
       <p id="status" class="status">Waiting for project file.</p>
       <pre id="run-output" class="run-output">No run yet.</pre>
     </aside>
