@@ -950,3 +950,120 @@ select:focus {
     opacity: 1;
 }
 
+/* Radial Menu CSS */
+.radial-menu {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+    z-index: 9999;
+}
+.radial-menu.active {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    pointer-events: auto;
+}
+.radial-menu-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    background: rgba(24, 24, 36, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    z-index: 2;
+}
+.radial-menu-item {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    margin-left: -20px;
+    margin-top: -20px;
+    background: rgba(24, 24, 36, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    transition: background 0.2s ease, color 0.2s ease, transform 0.3s ease;
+    z-index: 1;
+    transform: rotate(var(--angle)) translate(70px) rotate(calc(-1 * var(--angle)));
+}
+.radial-menu-item:hover {
+    background: var(--primary);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+.radial-menu-item .material-icons-round {
+    font-size: 18px;
+}
+.radial-menu-item .radial-label {
+    font-size: 0.6rem;
+    position: absolute;
+    bottom: -20px;
+    white-space: nowrap;
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+.radial-menu-item:hover .radial-label {
+    opacity: 1;
+}
+
+/* Radial Search Popup */
+.radial-search-popup {
+    font-family: inherit;
+    transition: opacity 0.15s ease;
+}
+#radial-search-input {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.25);
+    color: #fff;
+    font-size: 0.8rem;
+    outline: none;
+    transition: border-color 0.15s;
+}
+#radial-search-input:focus {
+    border-color: var(--primary);
+}
+.radial-search-item {
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.radial-search-item:hover, .radial-search-item.selected {
+    background: var(--primary);
+    color: #fff;
+}
+.radial-search-item .item-category {
+    font-size: 0.6rem;
+    opacity: 0.6;
+}
+
+

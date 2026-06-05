@@ -58,6 +58,23 @@ def get_trigger_input_index(node, flow, downstream_set, start_node):
 
 class WebNode(rc.Node):
     """Base Web Node with default coordinate state handling, timestep trigger, and downstream exec propagation support"""
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        # Check if cls has Inputs class
+        if hasattr(cls, 'Inputs') and isinstance(cls.Inputs, type):
+            cls.init_inputs = []
+            for attr_name in dir(cls.Inputs):
+                if not attr_name.startswith('_'):
+                    val = getattr(cls.Inputs, attr_name)
+                    cls.init_inputs.append(rc.NodeInputType(label=attr_name, default=rc.Data(val)))
+        
+        # Check if cls has Outputs class
+        if hasattr(cls, 'Outputs') and isinstance(cls.Outputs, type):
+            cls.init_outputs = []
+            for attr_name in dir(cls.Outputs):
+                if not attr_name.startswith('_'):
+                    cls.init_outputs.append(rc.NodeOutputType(label=attr_name))
+
     def __init__(self, params):
         super().__init__(params)
         self.x = 100
@@ -127,6 +144,20 @@ class WebNode(rc.Node):
     def update(self, inp=-1):
         if global_execution_paused:
             return
+
+        # Before running update_event, populate Inputs if class declaration exists
+        if hasattr(self.__class__, 'Inputs') and isinstance(self.__class__.Inputs, type):
+            inputs_instance = self.__class__.Inputs()
+            for idx, inp_port in enumerate(self.inputs):
+                label = inp_port.label_str
+                val_obj = self.input(idx)
+                setattr(inputs_instance, label, val_obj.payload if val_obj else None)
+            self.Inputs = inputs_instance
+            
+        if hasattr(self.__class__, 'Outputs') and isinstance(self.__class__.Outputs, type):
+            outputs_instance = self.__class__.Outputs()
+            self.Outputs = outputs_instance
+
         # Downstream execution propagation hook for exec mode
         if self.flow.algorithm_mode() == 'exec' and getattr(self, 'auto_exec_downstream', False):
             executor = self.flow.executor
@@ -152,7 +183,22 @@ class WebNode(rc.Node):
                                 print(f"Error propagating exec to downstream node {node.global_id}: {e}")
                 finally:
                     executor.updated_nodes = None
+                
+                # After update_event, propagate Outputs to ports
+                if hasattr(self, 'Outputs') and not isinstance(self.Outputs, type):
+                    for idx, out_port in enumerate(self.outputs):
+                        label = out_port.label_str
+                        val = getattr(self.Outputs, label, None)
+                        self.set_output_val(idx, rc.Data(val))
                 return
 
         # Default behavior
         super().update(inp)
+
+        # After update_event, propagate Outputs to ports
+        if hasattr(self, 'Outputs') and not isinstance(self.Outputs, type):
+            for idx, out_port in enumerate(self.outputs):
+                label = out_port.label_str
+                val = getattr(self.Outputs, label, None)
+                self.set_output_val(idx, rc.Data(val))
+

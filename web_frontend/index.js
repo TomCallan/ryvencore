@@ -22,6 +22,7 @@ $(function() {
 
     // Node templates dictionary
     let nodeTemplates = {};
+    let currentFlowName = 'flow_project';
 
     // Initialization
     function init() {
@@ -47,10 +48,10 @@ $(function() {
 
     // Map Backend Nodes to Categories
     function getNodeCategory(title) {
-        if (['Add', 'Subtract', 'Multiply', 'Divide'].includes(title)) return 'Math';
+        if (['Add', 'Subtract', 'Multiply', 'Divide', 'Array Calculator'].includes(title)) return 'Math';
         if (['Number', 'String', 'Concat', 'Uppercase'].includes(title)) return 'String';
-        if (['Compare', 'If/Else', 'Python REPL'].includes(title)) return 'Logic';
-        if (['Random', 'Log'].includes(title)) return 'Utility';
+        if (['Compare', 'If/Else', 'Python REPL', 'Python Script'].includes(title)) return 'Logic';
+        if (['Random', 'Log', 'Plot'].includes(title)) return 'Utility';
         if (['Trigger', 'Branch', 'Counter'].includes(title)) return 'Exec';
         return 'Utility';
     }
@@ -77,7 +78,7 @@ $(function() {
                 `;
                 categories[cat].forEach(tpl => {
                     libraryHtml += `
-                        <div class="node-item" data-identifier="${tpl.identifier}" data-category="${cat}">
+                        <div class="node-item" draggable="true" data-identifier="${tpl.identifier}" data-category="${cat}">
                             <span>${tpl.title}</span>
                             <span class="material-icons-round add-icon" title="Add to canvas">add</span>
                         </div>
@@ -253,6 +254,82 @@ $(function() {
                         textarea.val(n.code || '');
                     }
                 }
+            } else if (n.title === 'Python Script') {
+                if (nodeEl.find('.node-custom-content').length === 0) {
+                    nodeEl.find('.node-ports').after(`
+                        <div class="node-custom-content" style="padding: 0 14px 10px 14px; display: flex; flex-direction: column; gap: 4px;">
+                            <label style="font-size: 0.75rem; color: var(--text-secondary);">Script Path:</label>
+                            <input type="text" class="script-path-input" data-node="${n.id}" placeholder="e.g. example_script.py" style="width: 100%; font-family: monospace; font-size: 0.75rem; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 4px; border-radius: 4px;">
+                        </div>
+                    `);
+                    
+                    let input = nodeEl.find('.script-path-input');
+                    input.val(n.script_path || '');
+                    
+                    // Prevent node dragging when interacting with input
+                    input.on('mousedown selectstart', function(e) {
+                        e.stopPropagation();
+                    });
+                    
+                    // Update on blur or change
+                    input.on('change', function() {
+                        let pathVal = $(this).val();
+                        $.ajax({
+                            url: '/api/update_node_property',
+                            type: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({
+                                node_id: n.id,
+                                name: 'script_path',
+                                val: pathVal
+                            }),
+                            success: function(response) {
+                                if (response.status === 'success') {
+                                    loadFlow();
+                                }
+                            }
+                        });
+                    });
+                } else {
+                    let input = nodeEl.find('.script-path-input');
+                    if (!input.is(':focus')) {
+                        input.val(n.script_path || '');
+                    }
+                }
+            } else if (n.title === 'Plot') {
+                if (nodeEl.find('.node-custom-content').length === 0) {
+                    nodeEl.find('.node-ports').after(`
+                        <div class="node-custom-content" style="padding: 0 14px 10px 14px; display: flex; flex-direction: column; gap: 4px; align-items: center; width: 100%;">
+                            <svg class="plot-svg" width="100%" height="80" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 4px;"></svg>
+                        </div>
+                    `);
+                }
+                
+                let svg = nodeEl.find('.plot-svg');
+                let buffer = n.buffer || [];
+                svg.empty();
+                if (buffer.length > 1) {
+                    let minVal = Math.min(...buffer);
+                    let maxVal = Math.max(...buffer);
+                    let range = maxVal - minVal;
+                    if (range === 0) range = 1.0;
+                    
+                    let svgWidth = svg.width() || 192;
+                    let svgHeight = 80;
+                    let points = [];
+                    
+                    for (let idx = 0; idx < buffer.length; idx++) {
+                        let val = buffer[idx];
+                        let x = (idx / (buffer.length - 1)) * svgWidth;
+                        let y = svgHeight - 8 - ((val - minVal) / range) * (svgHeight - 16);
+                        points.push(`${x},${y}`);
+                    }
+                    
+                    let polyline = $(document.createElementNS("http://www.w3.org/2000/svg", "polyline"))
+                        .attr('points', points.join(' '))
+                        .attr('style', 'fill:none;stroke:var(--primary);stroke-width:2');
+                    svg.append(polyline);
+                }
             } else {
                 nodeEl.find('.node-custom-content').remove();
             }
@@ -264,16 +341,21 @@ $(function() {
             });
             nodeEl.attr('data-x', n.x).attr('data-y', n.y);
 
-            let currentWidth = n.width || 200;
-            let currentHeight = n.height || 120;
+            let defaultWidth = 200;
+            let defaultHeight = 120;
+            if (n.title === 'Plot') {
+                defaultWidth = 220;
+                defaultHeight = 180;
+            } else if (n.title === 'Array Calculator') {
+                defaultWidth = 220;
+                defaultHeight = 140;
+            }
+            let currentWidth = n.width || defaultWidth;
+            let currentHeight = n.height || defaultHeight;
             nodeEl.attr('data-width', currentWidth).attr('data-height', currentHeight);
 
-            if (n.width) {
-                nodeEl.css('width', `${n.width}px`);
-            }
-            if (n.height) {
-                nodeEl.css('min-height', `${n.height}px`);
-            }
+            nodeEl.css('width', `${currentWidth}px`);
+            nodeEl.css('min-height', `${currentHeight}px`);
 
             // Update Ports content
             let portsContainer = nodeEl.find('.node-ports').empty();
@@ -289,13 +371,17 @@ $(function() {
                     let isExec = inp.type === 'exec';
                     
                     let inpCol = $('<div class="port-input-container"></div>');
-                    inpCol.append(`<span class="port-label">${inp.label}</span>`);
+                    
+                    if (n.title === 'Python REPL') {
+                        let labelEl = $(`<input type="text" class="port-label-input" data-node="${n.id}" data-index="${i}" data-direction="input" value="${inp.label}" style="width: 60px; background: transparent; border: none; border-bottom: 1px dashed rgba(255,255,255,0.3); color: #fff; font-size: 0.75rem; padding: 2px; outline: none; margin-right: 4px;">`);
+                        let deleteBtn = $(`<span class="material-icons-round delete-port-btn" data-node="${n.id}" data-index="${i}" data-direction="input" style="font-size: 12px; color: var(--text-muted); cursor: pointer; margin-right: 4px;" title="Delete input">close</span>`);
+                        inpCol.append(deleteBtn).append(labelEl);
+                    } else {
+                        inpCol.append(`<span class="port-label">${inp.label}</span>`);
+                    }
                     
                     // Render input widget if NOT connected and type is data
                     if (!isExec) {
-                        // We check connection mapping during render, but for simplicity:
-                        // Let's check if there's any active wire targeting this input
-                        // If not connected, show input field
                         let inputWidget = $(`<input type="text" class="port-inline-input" data-node="${n.id}" data-index="${i}" value="${inp.val !== null ? inp.val : ''}">`);
                         inpCol.append(inputWidget);
                     }
@@ -310,10 +396,17 @@ $(function() {
                     let isExec = out.type === 'exec';
 
                     let outCol = $('<div class="port-output-container"></div>');
-                    outCol.append(`<span class="port-label">${out.label}</span>`);
-
+                    
                     if (!isExec && out.val !== null) {
                         outCol.append(`<span class="port-value-display" title="${out.val}">${out.val}</span>`);
+                    }
+
+                    if (n.title === 'Python REPL') {
+                        let labelEl = $(`<input type="text" class="port-label-input" data-node="${n.id}" data-index="${i}" data-direction="output" value="${out.label}" style="width: 60px; background: transparent; border: none; border-bottom: 1px dashed rgba(255,255,255,0.3); color: #fff; font-size: 0.75rem; padding: 2px; outline: none; text-align: right; margin-left: 4px;">`);
+                        let deleteBtn = $(`<span class="material-icons-round delete-port-btn" data-node="${n.id}" data-index="${i}" data-direction="output" style="font-size: 12px; color: var(--text-muted); cursor: pointer; margin-left: 4px;" title="Delete output">close</span>`);
+                        outCol.append(labelEl).append(deleteBtn);
+                    } else {
+                        outCol.append(`<span class="port-label">${out.label}</span>`);
                     }
 
                     row.append(outCol);
@@ -321,6 +414,22 @@ $(function() {
                 }
 
                 portsContainer.append(row);
+            }
+
+            // Clear any old add-ports-row first and insert if REPL node
+            nodeEl.find('.add-ports-row').remove();
+            if (n.title === 'Python REPL') {
+                let addPortsRow = $(`
+                    <div class="add-ports-row" style="display: flex; justify-content: space-between; padding: 4px 14px; border-top: 1px solid rgba(255,255,255,0.03);">
+                        <button class="btn-add-port" data-node="${n.id}" data-direction="input" style="background: none; border: none; color: var(--text-secondary); font-size: 0.7rem; display: flex; align-items: center; gap: 2px; cursor: pointer; padding: 2px 4px; border-radius: 4px;">
+                            <span class="material-icons-round" style="font-size: 12px;">add</span> Add Input
+                        </button>
+                        <button class="btn-add-port" data-node="${n.id}" data-direction="output" style="background: none; border: none; color: var(--text-secondary); font-size: 0.7rem; display: flex; align-items: center; gap: 2px; cursor: pointer; padding: 2px 4px; border-radius: 4px;">
+                            <span class="material-icons-round" style="font-size: 12px;">add</span> Add Output
+                        </button>
+                    </div>
+                `);
+                portsContainer.after(addPortsRow);
             }
 
             // Cache local port offsets in DOM attributes
@@ -529,6 +638,7 @@ $(function() {
 
     // Setup Sidebar drag and drop
     function setupSidebarDrag() {
+        // Click behavior
         $('.node-item').off('click').on('click', function() {
             let identifier = $(this).attr('data-identifier');
             
@@ -538,6 +648,13 @@ $(function() {
             let y = (viewport.height() / 2 - panY) / zoom;
 
             createNode(identifier, x, y);
+        });
+
+        // Drag start behavior
+        $('.node-item').off('dragstart').on('dragstart', function(e) {
+            let identifier = $(this).attr('data-identifier');
+            e.originalEvent.dataTransfer.setData('text/plain', identifier);
+            e.originalEvent.dataTransfer.effectAllowed = 'copy';
         });
     }
 
@@ -673,8 +790,8 @@ $(function() {
 
     // Polling function for live value updates
     function pollFlowUpdates() {
-        // Skip updates if user is interacting with canvas/nodes or if typing
-        if (isUserInteracting || isPanning || drawingConnection || $('.port-inline-input:focus').length > 0) return;
+        // Skip updates if user is typing
+        if ($('.port-inline-input:focus').length > 0 || $('.port-label-input:focus').length > 0) return;
         
         $.getJSON('/api/flow', function(flowData) {
             updateFlowValues(flowData);
@@ -746,6 +863,37 @@ $(function() {
             if (forceTriggerToggle.length > 0 && !forceTriggerToggle.is(':active')) {
                 forceTriggerToggle.prop('checked', n.force_trigger || false);
             }
+
+            // Update Plot SVG if Plot Node
+            if (n.title === 'Plot') {
+                let svg = nodeEl.find('.plot-svg');
+                if (svg.length > 0) {
+                    let buffer = n.buffer || [];
+                    svg.empty();
+                    if (buffer.length > 1) {
+                        let minVal = Math.min(...buffer);
+                        let maxVal = Math.max(...buffer);
+                        let range = maxVal - minVal;
+                        if (range === 0) range = 1.0;
+                        
+                        let svgWidth = svg.width() || 192;
+                        let svgHeight = 80;
+                        let points = [];
+                        
+                        for (let idx = 0; idx < buffer.length; idx++) {
+                            let val = buffer[idx];
+                            let x = (idx / (buffer.length - 1)) * svgWidth;
+                            let y = svgHeight - 8 - ((val - minVal) / range) * (svgHeight - 16);
+                            points.push(`${x},${y}`);
+                        }
+                        
+                        let polyline = $(document.createElementNS("http://www.w3.org/2000/svg", "polyline"))
+                            .attr('points', points.join(' '))
+                            .attr('style', 'fill:none;stroke:var(--primary);stroke-width:2');
+                        svg.append(polyline);
+                    }
+                }
+            }
         });
     }
 
@@ -753,6 +901,187 @@ $(function() {
     // Setup General Event Handlers
     function setupEventHandlers() {
         let viewport = $('#canvas-viewport');
+
+        // Radial Context Menu & Search Popup Variables & Helpers
+        let radialX = 0;
+        let radialY = 0;
+
+        function hideRadialMenu() {
+            let menu = $('#radial-menu');
+            menu.removeClass('active');
+            setTimeout(() => {
+                if (!menu.hasClass('active')) {
+                    menu.hide();
+                }
+            }, 300);
+        }
+
+        function hideRadialSearch() {
+            let search = $('#radial-search-popup');
+            search.hide();
+        }
+
+        function renderRadialSearchResults(query) {
+            let container = $('#radial-search-results').empty();
+            let filtered = [];
+            query = query.toLowerCase().trim();
+
+            Object.keys(nodeTemplates).forEach(id => {
+                let tpl = nodeTemplates[id];
+                if (!query || tpl.title.toLowerCase().includes(query)) {
+                    filtered.push(tpl);
+                }
+            });
+
+            filtered.forEach((tpl, idx) => {
+                let cat = getNodeCategory(tpl.title);
+                let item = $(`
+                    <div class="radial-search-item ${idx === 0 ? 'selected' : ''}" data-identifier="${tpl.identifier}">
+                        <span class="item-title">${tpl.title}</span>
+                        <span class="item-category">${cat}</span>
+                    </div>
+                `);
+                container.append(item);
+            });
+
+            if (filtered.length === 0) {
+                container.append(`<div style="font-size:0.7rem; color:var(--text-muted); text-align:center; padding: 8px;">No nodes found</div>`);
+            }
+        }
+
+        // Right-click viewport to trigger Radial Menu
+        viewport.on('contextmenu', function(e) {
+            if ($(e.target).closest('.node-card, .port-handle, .wire-path').length > 0) return;
+            e.preventDefault();
+            
+            hideRadialSearch();
+
+            let pageX = e.pageX;
+            let pageY = e.pageY;
+            
+            let offset = viewport.offset();
+            let clickX = e.clientX - offset.left;
+            let clickY = e.clientY - offset.top;
+            radialX = (clickX - panX) / zoom;
+            radialY = (clickY - panY) / zoom;
+
+            let menu = $('#radial-menu');
+            menu.css({
+                left: pageX + 'px',
+                top: pageY + 'px',
+                display: 'block'
+            });
+            
+            setTimeout(() => {
+                menu.addClass('active');
+            }, 10);
+        });
+
+        // Hide menus on click anywhere outside
+        $(document).on('mousedown', function(e) {
+            if ($(e.target).closest('#radial-menu, #radial-search-popup').length === 0) {
+                hideRadialMenu();
+                hideRadialSearch();
+            }
+        });
+
+        // Click on radial menu item
+        $(document).on('click', '.radial-menu-item', function(e) {
+            e.stopPropagation();
+            let action = $(this).attr('data-action');
+            hideRadialMenu();
+
+            if (action === 'add-node') {
+                let menu = $('#radial-menu');
+                let left = menu.css('left');
+                let top = menu.css('top');
+                
+                let search = $('#radial-search-popup');
+                search.css({
+                    left: left,
+                    top: top,
+                    display: 'flex'
+                });
+                
+                let input = $('#radial-search-input');
+                input.val('').focus();
+                renderRadialSearchResults('');
+            } else if (action === 'save') {
+                $('#btn-save').click();
+            } else if (action === 'load') {
+                $('#btn-load').click();
+            } else if (action === 'clear') {
+                $('#btn-clear').click();
+            } else if (action === 'pause') {
+                $('#btn-pause').click();
+            }
+        });
+
+        // Radial Search input events
+        $(document).on('input', '#radial-search-input', function() {
+            let query = $(this).val();
+            renderRadialSearchResults(query);
+        });
+
+        $(document).on('click', '.radial-search-item', function(e) {
+            e.stopPropagation();
+            let identifier = $(this).attr('data-identifier');
+            createNode(identifier, radialX, radialY);
+            hideRadialSearch();
+        });
+
+        $(document).on('mousedown keydown keyup', '#radial-search-input', function(e) {
+            e.stopPropagation();
+        });
+
+        $(document).on('keydown', '#radial-search-input', function(e) {
+            if (e.key === 'Enter') {
+                let selected = $('#radial-search-results .radial-search-item.selected');
+                if (selected.length > 0) {
+                    let identifier = selected.attr('data-identifier');
+                    createNode(identifier, radialX, radialY);
+                    hideRadialSearch();
+                }
+            } else if (e.key === 'Escape') {
+                hideRadialSearch();
+            } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                let items = $('#radial-search-results .radial-search-item');
+                if (items.length > 0) {
+                    let current = items.filter('.selected');
+                    let nextIdx = 0;
+                    if (current.length > 0) {
+                        let idx = items.index(current);
+                        nextIdx = e.key === 'ArrowDown' ? (idx + 1) % items.length : (idx - 1 + items.length) % items.length;
+                        current.removeClass('selected');
+                    }
+                    items.eq(nextIdx).addClass('selected');
+                    items.eq(nextIdx)[0].scrollIntoView({ block: 'nearest' });
+                    e.preventDefault();
+                }
+            }
+        });
+
+        // Setup Drag and Drop onto Canvas
+        viewport.on('dragover', function(e) {
+            e.preventDefault();
+            e.originalEvent.dataTransfer.dropEffect = 'copy';
+        });
+
+        viewport.on('drop', function(e) {
+            e.preventDefault();
+            let identifier = e.originalEvent.dataTransfer.getData('text/plain');
+            if (identifier) {
+                let offset = viewport.offset();
+                let dropX = e.originalEvent.clientX - offset.left;
+                let dropY = e.originalEvent.clientY - offset.top;
+                
+                let x = (dropX - panX) / zoom;
+                let y = (dropY - panY) / zoom;
+                
+                createNode(identifier, x, y);
+                addLog(`Dropped new node: ${identifier}`);
+            }
+        });
 
         // Panning handler
         viewport.on('mousedown', function(e) {
@@ -810,17 +1139,42 @@ $(function() {
 
         // Toolbar Button handlers
         $('#btn-save').on('click', function() {
-            $.post('/api/save', function(res) {
-                alert(`Project saved successfully to: ${res.filepath}`);
-            });
+            let name = prompt("Enter flow name to save:", currentFlowName);
+            if (name) {
+                $.ajax({
+                    url: '/api/save',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ name: name }),
+                    success: function(res) {
+                        currentFlowName = res.name;
+                        alert(`Project saved successfully as "${res.name}"`);
+                    }
+                });
+            }
         });
 
         $('#btn-load').on('click', function() {
-            $.post('/api/load', function() {
-                loadFlow();
-                addLog('Loaded saved project flow');
-            }).fail(function() {
-                alert('No saved project file found.');
+            $.getJSON('/api/list_flows', function(res) {
+                let flows = res.flows || [];
+                let msg = "Available saved flows:\n" + flows.map(f => ` - ${f}`).join('\n') + "\n\nEnter name of flow to load:";
+                let name = prompt(msg, currentFlowName);
+                if (name) {
+                    $.ajax({
+                        url: '/api/load',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ name: name }),
+                        success: function(loadRes) {
+                            currentFlowName = loadRes.name;
+                            loadFlow();
+                            addLog(`Loaded saved project flow: ${loadRes.name}`);
+                        },
+                        error: function(err) {
+                            alert('Failed to load flow: ' + (err.responseJSON ? err.responseJSON.message : 'Unknown'));
+                        }
+                    });
+                }
             });
         });
 
@@ -983,6 +1337,76 @@ $(function() {
                     node_id: nodeId,
                     name: 'loop_interval',
                     val: interval
+                }),
+                success: function() {
+                    loadFlow();
+                }
+            });
+        });
+
+        // Prevent node dragging/selection issues on label input
+        $(document).on('mousedown selectstart', '.port-label-input, .delete-port-btn, .btn-add-port', function(e) {
+            e.stopPropagation();
+        });
+
+        // Port label rename handler
+        $(document).on('change', '.port-label-input', function() {
+            let label = $(this).val();
+            let nodeId = $(this).attr('data-node');
+            let index = $(this).attr('data-index');
+            let direction = $(this).attr('data-direction');
+
+            $.ajax({
+                url: '/api/rename_port',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    node_id: nodeId,
+                    direction: direction,
+                    index: index,
+                    label: label
+                }),
+                success: function() {
+                    loadFlow();
+                }
+            });
+        });
+
+        // Delete port button handler
+        $(document).on('click', '.delete-port-btn', function(e) {
+            e.stopPropagation();
+            let nodeId = $(this).attr('data-node');
+            let index = $(this).attr('data-index');
+            let direction = $(this).attr('data-direction');
+
+            $.ajax({
+                url: '/api/delete_port',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    node_id: nodeId,
+                    direction: direction,
+                    index: index
+                }),
+                success: function() {
+                    loadFlow();
+                }
+            });
+        });
+
+        // Add port button handler
+        $(document).on('click', '.btn-add-port', function(e) {
+            e.stopPropagation();
+            let nodeId = $(this).attr('data-node');
+            let direction = $(this).attr('data-direction');
+
+            $.ajax({
+                url: '/api/add_port',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    node_id: nodeId,
+                    direction: direction
                 }),
                 success: function() {
                     loadFlow();
@@ -1319,7 +1743,7 @@ $(function() {
     // Wrap the pollFlowUpdates call to support adaptive delay based on active loops
     let originalPollFlowUpdates = pollFlowUpdates;
     pollFlowUpdates = function() {
-        if (isUserInteracting || isPanning || drawingConnection || $('.port-inline-input:focus').length > 0) {
+        if ($('.port-inline-input:focus').length > 0 || $('.port-label-input:focus').length > 0) {
             scheduleNextPoll(1000); // retry later
             return;
         }

@@ -64,16 +64,68 @@ This means **any new nodes you add to the `nodes/` directory are immediately dis
 
 ---
 
+---
+
+## Dynamic Inputs / Outputs via Python Class Declarations
+
+Both the **Python REPL** node and custom script/node definitions support dynamic input/output port generation using nested `Inputs` and `Outputs` class declarations.
+
+### Example:
+If you write the following structure:
+```python
+class Inputs:
+    multiplier = 2.0
+    value = 5.0
+
+class Outputs:
+    result = 0.0
+
+Outputs.result = Inputs.multiplier * Inputs.value
+```
+The node will automatically build with the corresponding `multiplier` and `value` input ports, and the `result` output port. If attributes are added or removed, ports will be updated on the fly while preserving connections on unmodified ports.
+
+---
+
 ## The Inline Python REPL Node
 
-The **Python REPL** node (`PythonReplNode`) lets you execute arbitrary python code inside the flow using exactly 2 inputs and 2 outputs.
+The **Python REPL** node (`PythonReplNode`) lets you execute arbitrary inline python code.
+*   **Properties:** A custom multi-line text input field embedded inside the node card.
+*   **Fallback:** If no `class Inputs:` or `class Outputs:` are declared in the code, it falls back to 2 default inputs (`in1`, `in2`) and 2 default outputs (`out1`, `out2`) for compatibility.
 
-*   **Inputs:** `in1` (data), `in2` (data)
-*   **Outputs:** `out1` (data), `out2` (data)
-*   **Properties:** A custom multi-line text input field embedded directly inside the node card.
+---
 
-### How it works:
-When the Python REPL node is updated, the backend executes the custom code block via python's `exec()` command inside a scoped environment containing the input payloads (`in1`, `in2`) and variables for outputs (`out1`, `out2`). The outputs are then updated with the resulting values.
+## The Python Script Node
+
+The **Python Script** node (`PythonScriptNode`) executes a full external Python script file (e.g. `example_script.py`) rather than requiring inline text entry.
+*   **Properties:** A text input field to enter the script file path (relative to the project root).
+*   **How it works:** Whenever the path is edited, the backend loads the script, parses the `Inputs` and `Outputs` class declarations to construct ports on the fly, and runs the script using AST-rewriting to inject input values on execution.
+
+---
+
+## Right-Click Radial Context Menu & Search Spotlight
+
+Right-click anywhere on the canvas background to summon a circular **Radial Context Menu**.
+*   **Actions:** Quick access to Add Node, Save Flow, Load Flow, Clear Flow, and Pause/Resume.
+*   **Search Spotlight:** Choosing **Add Node** opens an Unreal Engine / Spotlight-style floating search input at the mouse pointer.
+    *   Type to filter all registered nodes dynamically.
+    *   Use **Up/Down Arrow keys** to navigate list items.
+    *   Press **Enter** to place the node exactly at the right-click coordinate.
+
+---
+
+## Saving & Loading Multiple Flows
+
+You are no longer limited to a single hardcoded project file.
+*   **Saving:** Click **Save** (or use the Radial Menu) to name the flow. It is saved as a JSON project in the `saved_flows/` directory.
+*   **Loading:** Click **Load** (or use the Radial Menu) to retrieve a list of all saved flows. Type the name of the flow to deserialize and open it.
+
+---
+
+## Data Nodes with Buffers
+
+Two new nodes are provided to demonstrate and process data buffers:
+1.  **Plot Node (`PlotNode`):** Listens to a stream of numeric values, appends them to a sliding buffer (configurable limit), and visualizes the curve in real-time as an SVG line chart directly inside the node card. Updates smoothly even while you drag cards around.
+2.  **Array Calculator Node (`ArrayCalculatorNode`):** Parses arrays (e.g. `[1, 2, 3]`) or raw comma-separated values, executing aggregate functions: `sum`, `mean`, `min`, `max`, `std` (standard deviation), or scalar element multiplication (`multiply`).
 
 ---
 
@@ -82,7 +134,7 @@ When the Python REPL node is updated, the backend executes the custom code block
 Here is the step-by-step procedure to add a new node and render it in ryvencore Studio:
 
 ### Step 1: Write the Python Logic
-Create a new file in the `nodes/` folder (e.g., `nodes/custom_nodes.py`) or add it to `nodes/basic_nodes.py`. Define a class inheriting from `WebNode`:
+Create a new file in the `nodes/` folder (e.g., `nodes/custom_nodes.py`) or add it to `nodes/basic_nodes.py`. Define a class inheriting from `WebNode` using nested `Inputs` and `Outputs` class declarations:
 
 ```python
 import ryvencore as rc
@@ -90,24 +142,20 @@ from nodes.base import WebNode
 
 class PowerNode(WebNode):
     title = 'Power'
-    init_inputs = [
-        rc.NodeInputType(label='base', default=rc.Data(2.0)),
-        rc.NodeInputType(label='exponent', default=rc.Data(3.0))
-    ]
-    init_outputs = [rc.NodeOutputType(label='result')]
+    
+    class Inputs:
+        base = 2.0
+        exponent = 3.0
+        
+    class Outputs:
+        result = 0.0
 
     def update_event(self, inp=-1):
-        # Read inputs safely
-        base = self.input(0).payload if self.input(0) else 2.0
-        exponent = self.input(1).payload if self.input(1) else 3.0
-        
         try:
-            res = float(base) ** float(exponent)
+            # Attributes are automatically populated from/written to ports
+            self.Outputs.result = float(self.Inputs.base) ** float(self.Inputs.exponent)
         except Exception as e:
-            res = f"Error: {e}"
-
-        # Write output
-        self.set_output_val(0, rc.Data(res))
+            self.Outputs.result = f"Error: {e}"
 ```
 
 ### Step 2: Categorization (Frontend)

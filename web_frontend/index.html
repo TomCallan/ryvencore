@@ -165,6 +165,40 @@
         </div>
     </div>
 
+    <!-- Radial Menu -->
+    <div class="radial-menu" id="radial-menu" style="display: none;">
+        <div class="radial-menu-center">
+            <span class="material-icons-round">menu</span>
+        </div>
+        <div class="radial-menu-item" data-action="add-node" style="--angle: 0deg;" title="Add Node">
+            <span class="material-icons-round">add</span>
+            <span class="radial-label">Add Node</span>
+        </div>
+        <div class="radial-menu-item" data-action="save" style="--angle: 72deg;" title="Save Flow">
+            <span class="material-icons-round">save</span>
+            <span class="radial-label">Save Flow</span>
+        </div>
+        <div class="radial-menu-item" data-action="load" style="--angle: 144deg;" title="Load Flow">
+            <span class="material-icons-round">folder_open</span>
+            <span class="radial-label">Load Flow</span>
+        </div>
+        <div class="radial-menu-item" data-action="clear" style="--angle: 216deg;" title="Clear Flow">
+            <span class="material-icons-round">delete_sweep</span>
+            <span class="radial-label">Clear Flow</span>
+        </div>
+        <div class="radial-menu-item" data-action="pause" style="--angle: 288deg;" title="Toggle Pause">
+            <span class="material-icons-round" id="radial-pause-icon">pause</span>
+            <span class="radial-label" id="radial-pause-label">Pause</span>
+        </div>
+    </div>
+
+    <!-- Radial Search Popup -->
+    <div class="radial-search-popup" id="radial-search-popup" style="display: none; position: absolute; z-index: 10000; width: 220px; background: rgba(24, 24, 36, 0.98); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.6); padding: 8px; flex-direction: column; gap: 6px; backdrop-filter: blur(12px);">
+        <input type="text" id="radial-search-input" placeholder="Search nodes..." style="width: 100%; padding: 6px 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.25); color: #fff; font-size: 0.8rem; outline: none;">
+        <div id="radial-search-results" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px;">
+        </div>
+    </div>
+
     <script src="index.js"></script>
 </body>
 </html>

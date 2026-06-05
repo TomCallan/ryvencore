@@ -30,7 +30,7 @@ def load_nodes_from_folder():
             module_name = filename[:-3]
             try:
                 if module_name in sys.modules:
-                    module = importlib.reload(sys.modules[module_name])
+                    module = sys.modules[module_name]
                 else:
                     module = importlib.import_module(module_name)
                     
@@ -178,6 +178,8 @@ def get_flow_state():
             'force_trigger': getattr(n, 'force_trigger', False),
             'target_node_id': getattr(n, 'target_node_id', None),
             'code': getattr(n, 'code', None),
+            'script_path': getattr(n, 'script_path', None),
+            'buffer': getattr(n, 'buffer', None),
             'inputs': inputs_data,
             'outputs': outputs_data
         })
@@ -233,6 +235,19 @@ class APIRequestHandler(BaseHTTPRequestHandler):
             self.send_json_response(get_flow_state())
         elif path == '/api/logs':
             self.send_json_response(nb.log_messages)
+        elif path == '/api/list_flows':
+            flows_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'saved_flows')
+            os.makedirs(flows_dir, exist_ok=True)
+            files = []
+            for filename in os.listdir(flows_dir):
+                if filename.endswith('.json'):
+                    files.append(filename[:-5])
+            
+            default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'flow_project.json')
+            if os.path.exists(default_path) and 'flow_project' not in files:
+                files.append('flow_project')
+            
+            self.send_json_response({'status': 'success', 'flows': sorted(files)})
         else:
             # Serve static files from web_frontend folder
             filename = path.lstrip('/')
@@ -286,6 +301,19 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                 node_id = int(req.get('node_id'))
                 n = next((node for node in flow.nodes if node.global_id == node_id), None)
                 if n:
+                    # Disconnect all inputs
+                    for inp in list(n.inputs):
+                        out = flow.connected_output(inp)
+                        if out is not None:
+                            flow.disconnect_nodes(out, inp)
+                    # Disconnect all outputs
+                    for out in list(n.outputs):
+                        for inp in list(flow.connected_inputs(out)):
+                            flow.disconnect_nodes(out, inp)
+                            
+                    if hasattr(n, 'stop_loop'):
+                        n.stop_loop()
+                        
                     flow.remove_node(n)
                     self.send_json_response({'status': 'success'})
                 else:
@@ -448,14 +476,41 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                 self.send_json_response({'status': 'success', 'flow': get_flow_state()})
 
             elif path == '/api/save':
-                filepath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'flow_project.json')
+                name = req.get('name', 'flow_project')
+                if not name.strip():
+                    name = 'flow_project'
+                name = "".join(c for c in name if c.isalnum() or c in (' ', '_', '-')).strip()
+                if not name:
+                    name = 'flow_project'
+                
+                flows_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'saved_flows')
+                os.makedirs(flows_dir, exist_ok=True)
+                
+                filepath = os.path.join(flows_dir, f"{name}.json")
                 data = session.serialize()
                 with open(filepath, 'w') as f:
                     json.dump(data, f, indent=4)
-                self.send_json_response({'status': 'success', 'filepath': filepath})
+                
+                # Also save default flow_project.json in root if it's the default name
+                if name == 'flow_project':
+                    default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'flow_project.json')
+                    with open(default_path, 'w') as f:
+                        json.dump(data, f, indent=4)
+
+                self.send_json_response({'status': 'success', 'filepath': filepath, 'name': name})
 
             elif path == '/api/load':
-                filepath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'flow_project.json')
+                name = req.get('name', 'flow_project')
+                name = "".join(c for c in name if c.isalnum() or c in (' ', '_', '-')).strip()
+                if not name:
+                    name = 'flow_project'
+                
+                flows_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'saved_flows')
+                filepath = os.path.join(flows_dir, f"{name}.json")
+                
+                if not os.path.exists(filepath) and name == 'flow_project':
+                    filepath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'flow_project.json')
+
                 if os.path.exists(filepath):
                     with open(filepath, 'r') as f:
                         data = json.load(f)
@@ -468,14 +523,13 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                     # Recreate session & flow
                     session = rc.Session()
                     session.register_node_types(NODE_CLASSES)
-                    # Load will rebuild
                     flows = session.load(data)
                     if flows:
                         flow = flows[0]
                     nb.global_execution_paused = False
-                    self.send_json_response({'status': 'success', 'flow': get_flow_state()})
+                    self.send_json_response({'status': 'success', 'flow': get_flow_state(), 'name': name})
                 else:
-                    self.send_error_response('No saved project file found')
+                    self.send_error_response(f'Saved flow file not found: {name}')
 
             elif path == '/api/add_log':
                 msg = req.get('msg')
@@ -486,6 +540,53 @@ class APIRequestHandler(BaseHTTPRequestHandler):
             elif path == '/api/clear_logs':
                 nb.log_messages.clear()
                 self.send_json_response({'status': 'success'})
+
+            elif path == '/api/add_port':
+                node_id = int(req.get('node_id'))
+                direction = req.get('direction')
+                n = next((node for node in flow.nodes if node.global_id == node_id), None)
+                if n:
+                    if direction == 'input':
+                        label = f"in{len(n.inputs) + 1}"
+                        n.create_input(label=label, default=rc.Data(0.0))
+                    elif direction == 'output':
+                        label = f"out{len(n.outputs) + 1}"
+                        n.create_output(label=label)
+                    n.update()
+                    self.send_json_response({'status': 'success', 'flow': get_flow_state()})
+                else:
+                    self.send_error_response('Node not found')
+
+            elif path == '/api/delete_port':
+                node_id = int(req.get('node_id'))
+                direction = req.get('direction')
+                index = int(req.get('index'))
+                n = next((node for node in flow.nodes if node.global_id == node_id), None)
+                if n:
+                    if direction == 'input':
+                        n.delete_input(index)
+                    elif direction == 'output':
+                        n.delete_output(index)
+                    n.update()
+                    self.send_json_response({'status': 'success', 'flow': get_flow_state()})
+                else:
+                    self.send_error_response('Node not found')
+
+            elif path == '/api/rename_port':
+                node_id = int(req.get('node_id'))
+                direction = req.get('direction')
+                index = int(req.get('index'))
+                label = req.get('label')
+                n = next((node for node in flow.nodes if node.global_id == node_id), None)
+                if n:
+                    if direction == 'input':
+                        n.rename_input(index, label)
+                    elif direction == 'output':
+                        n.rename_output(index, label)
+                    n.update()
+                    self.send_json_response({'status': 'success', 'flow': get_flow_state()})
+                else:
+                    self.send_error_response('Node not found')
 
             else:
                 self.send_error(404, 'Endpoint Not Found')
