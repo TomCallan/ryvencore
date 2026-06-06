@@ -1,6 +1,7 @@
 import inspect
 import json
 import hashlib
+import time
 from typing import List, Set, Type
 from .Flow import Flow
 from .Node import Node
@@ -73,6 +74,11 @@ class FlowCompiler:
 
         # Add basic mocks of ryvencore classes
         script.append("""# --- Compiled ryvencore Runtime Mock ---
+import random
+import math
+import json
+import csv
+import os.path
 class CompiledData:
     def __init__(self, value=None, load_from=None):
         self.payload = value
@@ -211,6 +217,9 @@ class WebNode(CompiledNode):
 def add_server_log(msg):
     print(f"[Server Log] {msg}")
 
+log_messages = []
+global_execution_paused = False
+
 """)
 
         # Add node classes source code
@@ -308,3 +317,44 @@ if __name__ == '__main__':
 """)
 
         return "\n".join(script)
+
+    @staticmethod
+    def compile_with_metrics(flow: Flow) -> str:
+        """
+        Compile a flow and record compilation metrics.
+        Returns the compiled Python source code.
+        """
+        from .Metrics import global_metrics
+
+        global_metrics().start_compile(flow.title)
+        try:
+            source = FlowCompiler.compile(flow)
+            elapsed = global_metrics().stop_compile(
+                flow.title,
+                node_count=len(flow.nodes),
+                edge_count=sum(len(inputs) for inputs in flow.graph_adj.values()),
+            )
+        except Exception:
+            global_metrics().stop_compile(flow.title)
+            raise
+        return source
+
+    @staticmethod
+    def benchmark_compile(flow: Flow, iterations: int = 5) -> dict:
+        """
+        Benchmark the compilation process over multiple iterations.
+        Returns a dict with min/avg/max compilation times in milliseconds.
+        """
+        times = []
+        for _ in range(iterations):
+            t0 = time.perf_counter()
+            FlowCompiler.compile(flow)
+            times.append((time.perf_counter() - t0) * 1000.0)
+
+        return {
+            'iterations': iterations,
+            'min_ms': min(times),
+            'avg_ms': sum(times) / len(times),
+            'max_ms': max(times),
+            'times_ms': times,
+        }

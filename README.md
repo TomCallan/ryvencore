@@ -28,15 +28,40 @@ To make extending the platform simple and clean, all node definitions have been 
 
 ```
 rycore/
-├── nodes/                  # Dedicated Python Node Logic
-│   ├── base.py             # WebNode base class and flow execution hooks
-│   └── basic_nodes.py      # Python node definitions (Math, Logic, Utility, REPL)
-├── web_frontend/           # Frontend Web App (HTML/CSS/JS)
-│   ├── index.html          # Main HTML markup
-│   ├── index.css           # Premium styles
-│   └── index.js            # Node rendering, canvas zoom/pan, socket/AJAX logic
-├── run_web_server.py       # HTTP API Server and session coordinator
-└── flow_project.json       # Pre-saved example workflow
+├── ryvencore/               # Core graph execution engine
+│   ├── __init__.py          # Public API surface
+│   ├── Base.py              # Base class (ID counter, events, serialization)
+│   ├── Compiler.py          # Flow-to-standalone-script compiler
+│   ├── Data.py              # Inter-node data wrapper
+│   ├── Flow.py              # Graph manager (nodes, edges, executors, benchmarks)
+│   ├── FlowExecutor.py      # 4 execution algorithms + compiled executor
+│   ├── Metrics.py           # Timing/benchmarking infrastructure
+│   ├── Node.py              # Node base class
+│   ├── NodePort.py          # Runtime port objects
+│   ├── NodePortType.py      # Port blueprint types
+│   ├── RC.py                # Enums (FlowAlg, PortObjPos)
+│   ├── Session.py           # Top-level project manager
+│   ├── utils.py             # Serialization, deserialization, imports
+│   ├── py.typed             # PEP 561 marker
+│   └── addons/              # Built-in add-ons (Logging, Variables)
+├── nodes/                   # Custom node definitions
+│   ├── base.py              # WebNode base class + flow execution hooks
+│   ├── basic_nodes.py       # ~24 node classes (math, logic, exec, I/O, DB, plotting)
+│   └── nn_nodes.py          # 8 neural network nodes (trainer, inference, layers, loss)
+├── plotting/                # SVG plotting engine
+├── compiled/                # Generated standalone compiled scripts
+├── saved_flows/             # Persistent JSON flow project files
+├── example_scripts/         # External Python scripts for PythonScriptNode
+├── tests/                   # pytest test suite
+├── web_frontend/            # Browser-based UI (HTML/CSS/JS)
+├── run_web_server.py        # HTTP API server + static file server
+├── run_cli.py               # CLI flow runner + benchmark mode
+├── run_benchmarks.py        # Comprehensive 7-benchmark performance suite
+├── compile_workflow.py      # Standalone flow compilation script
+├── create_nn_flow.py        # NN training + inference flow generator
+├── create_parquet_db_flow.py # 100MB parquet DB flow generator
+├── create_*.py              # Additional flow generators
+└── flow_project.json        # Default example workflow
 ```
 
 ---
@@ -278,14 +303,54 @@ ryvencore Studio includes several pre-configured workflows showcasing different 
 
 ## High-Performance Core & Flow Compilation (Phase 3)
 
-The ryvencore core has been optimized for high-throughput processing (e.g. streaming 100M+ rows of OHLCV/orderbook data, real-time feeds, and fast backtesting):
+The ryvencore core has been optimized for high-throughput processing (e.g. streaming 100M+ rows of OHLCV/orderbook data, real-time feeds, and fast backtesting) with comprehensive benchmarking and metrics infrastructure.
+
+### 0. Metrics & Benchmarking Infrastructure (`ryvencore/Metrics.py`)
+
+A centralized metrics system tracks and compares execution performance across all algorithm modes:
+
+```python
+import ryvencore as rc
+from ryvencore.Metrics import Metrics, global_metrics
+
+# Track compilation
+global_metrics().start_compile('my_flow')
+rc.FlowCompiler.compile(flow)
+elapsed = global_metrics().stop_compile('my_flow', node_count=10, edge_count=25)
+
+# Track execution per mode
+global_metrics().start_execution('my_flow', 'data')
+# ... trigger flow execution ...
+global_metrics().stop_execution('my_flow', 'data', bytes_processed=1_000_000)
+
+# Get speedup comparisons
+speedup = global_metrics().speedup_over_naive('my_flow', 'compiled')
+print(global_metrics().summary())
+```
+
+**API Surface** (`rc.Metrics` and `rc.global_metrics`):
+- `start_compile(name)` / `stop_compile(name, nodes, edges)` — track compilation timing
+- `start_execution(name, mode)` / `stop_execution(name, mode, bytes, rows, iters)` — track execution timing
+- `avg_execution_time(name, mode)` — average execution time for a flow/mode
+- `speedup_over_naive(name, mode)` — speedup ratio vs naive data flow
+- `compilation_speedup_over_naive(name)` — compiled vs naive comparison
+- `throughput_mb_s(name, mode)` — data throughput in MB/s
+- `summary(flow_name)` — human-readable metrics report
+- `to_dict()` / `reset()` — serialization and reset
+
+**Flow-level benchmarking methods** (on `rc.Flow`):
+- `benchmark_execution(trigger_fn, mode, iterations, bytes_processed)` — per-mode benchmark
+- `compare_algorithms(trigger_fn, modes, iterations, bytes_per_iter)` — cross-mode comparison with speedup ratios
+
 
 ### 1. Core Optimizations
-*   **Lazy ID Generation:** Transient `Data` instances skip global ID generation overhead, saving millions of unnecessary calls to the global ID counter when streaming ticks/frames.
-*   **O(1) Output Propagation:** Removed the O(N) loop resetting output flags across the entire graph. Output update status is stored in dynamic dictionary keys and resolved in O(1) time.
-*   **DP Waiting Cache:** The topological wait count generation algorithm caches successor counts per root node. Graph traversal runs in O(1) lookup time instead of O(V + E) on subsequent ticks.
-*   **Thread-Local Execution Isolation:** Transparent properties map executor states (active nodes, output flags, propagation lists) to thread-local storage (`threading.local()`), allowing safe concurrent execution of flows across multiple threads (e.g. live socket trading feeds).
-*   **Memory Leak Fix:** Loaded ID mapping references are automatically cleared at the end of the session load process, reclaiming substantial memory.
+
+### 1. Core Optimizations
+*   **Lazy ID Generation:** Transient `Data` instances skip global ID generation overhead.
+*   **O(1) Output Propagation:** Output update status stored in dynamic dictionary keys.
+*   **DP Waiting Cache:** Topological wait count generation caches successor counts per root node.
+*   **Thread-Local Execution Isolation:** Transparent properties map executor states to `threading.local()` storage.
+*   **Memory Leak Fix:** Loaded ID mapping references cleared at session load completion.
 
 ### 2. Standalone Flow Compiler & "Run Compiled" Execution Mode
 You can compile any visual node graph into a single, self-contained Python script. This completely eliminates the overhead of the execution framework (executors, events, sessions) and allows running backtesting/trading at native python speed.
@@ -317,3 +382,164 @@ A custom modular plotting engine is implemented in the [plotting](file:///C:/Use
     *   Integrated a global `ResizeObserver` on node card bounds to automatically update coordinate offsets and redraw connections in real-time when inputs shrink or nodes are resized.
 
 
+## Neural Network Training & Inference (Phase 4)
+
+The `nodes/nn_nodes.py` module provides production-ready neural network nodes for training and inference directly within flows:
+
+### Node Types
+
+| Node | Title | Description |
+|------|-------|-------------|
+| `NNTrainerNode` | NN Trainer | 2-layer NN with configurable hidden size, full forward/backward pass + SGD optimization. Each `update_event` runs one training step. Outputs prediction, loss, and updated weights/biases. |
+| `NNInferenceNode` | NN Inference | Forward pass only through a 2-layer network. Takes pretrained weights and input data, outputs prediction and hidden layer activations. |
+| `LinearLayerNode` | Linear Layer | Generic y = x @ W^T + b transform with gradient caching for backprop. |
+| `ReLUNode` | ReLU | Element-wise ReLU activation with mask output. |
+| `SigmoidNode` | Sigmoid | Element-wise sigmoid activation. |
+| `MSELossNode` | MSE Loss | Mean Squared Error with gradient output. |
+| `SGDOptimizerNode` | SGD Optimizer | Parameter update step: param = param - lr * grad. |
+| `NNDataGeneratorNode` | NN Data Generator | Generates synthetic training data (y = 2*x0 + 3*x1 + noise). |
+
+### Usage Example
+
+```python
+import ryvencore as rc
+from nn_nodes import NNTrainerNode, NNInferenceNode
+
+session = rc.Session()
+session.register_node_types([NNTrainerNode])
+flow = session.create_flow('nn_demo')
+trainer = flow.create_node(NNTrainerNode)
+trainer.inputs[0].default = rc.Data([0.5, 0.8])   # input features
+trainer.inputs[1].default = rc.Data([2.6])        # target
+trainer.inputs[2].default = rc.Data(0.01)         # learning rate
+trainer.update()
+print(f"Loss: {trainer.outputs[1].val.payload}")
+```
+
+### Workflow Generation
+
+```bash
+python create_nn_flow.py            # Generate training + inference flows
+python create_nn_flow.py --compile  # Also compile both flows
+```
+
+
+## Large-Scale Database Workflows (Phase 4)
+
+Support for generating and querying massive datasets (100MB+ parquet) with DuckDB:
+
+### Nodes
+
+| Node | Title | Description |
+|------|-------|-------------|
+| `ParquetReaderNode` | Parquet Reader | Reads parquet files via Polars with configurable row limits. Outputs schema info and data as dicts. |
+| `DuckDBQueryNode` | DuckDB Query | Executes SQL queries against DuckDB databases (file or `:memory:`). Outputs query info and results. |
+
+### 100MB Parquet Generator
+
+```bash
+python create_parquet_db_flow.py                    # Generate 100MB parquet + processing flow
+python create_parquet_db_flow.py --size-mb 200      # Custom size
+python create_parquet_db_flow.py --no-generate      # Skip parquet generation, just create flow
+```
+
+### Parquet Query Benchmarks
+
+The DuckDB query node runs SQL directly against parquet files:
+
+```python
+n_query.inputs[1].default = rc.Data(
+    "SELECT category, count(*), avg(price_0) "
+    "FROM read_parquet('large_dataset.parquet') "
+    "GROUP BY category"
+)
+```
+
+Compiled standalone execution achieves **3-4x speedup** over naive data flow for parquet queries by eliminating framework dispatch overhead.
+
+
+## Comprehensive Benchmark Suite
+
+`run_benchmarks.py` provides a complete performance validation suite comparing all algorithm modes:
+
+```bash
+python run_benchmarks.py              # Run all 7 benchmarks
+python run_benchmarks.py --quick      # Fast mode (fewer iterations)
+python run_benchmarks.py --nn-only    # Only NN benchmarks
+python run_benchmarks.py --db-only    # Only DB benchmarks
+python run_benchmarks.py --quiet      # Suppress verbose log output
+```
+
+### Benchmarks
+
+| # | Benchmark | What it Tests |
+|---|-----------|---------------|
+| 0 | Diamond Graph | n-node wide graph, O(width^2 * depth) edges — validates DP optimization + compilation |
+| 1 | Simple Math | Basic A+B*C pipeline correctness |
+| 2 | NN Training | 2-layer backprop through compiled vs interpreted |
+| 3 | NN Inference | Forward pass latency across modes |
+| 4 | Parquet DB | 100MB file read + SQL group-by aggregation |
+| 5 | Compilation Overhead | Raw `FlowCompiler.compile()` timing |
+| 6 | PythonScript AST | Cached AST execution speed comparison |
+
+### Typical Results (quick mode)
+
+| Benchmark | Data Opt | Compiled |
+|-----------|---------|----------|
+| Diamond graph (30 nodes) | 0.7x | **4.1x** |
+| Simple math pipeline | 0.6x | **4.7x** |
+| NN training | 0.7x | **4.4x** |
+| NN inference | 0.5x | **4.3x** |
+| Parquet DB query | 0.8x | **3.0x** |
+| PythonScript AST | 1.1x | **6.8x** |
+
+Compilation overhead: ~2-7ms for flows up to 24 nodes.
+Metrics saved to `benchmark_results.json` for external analysis.
+
+
+## CLI Benchmark Mode
+
+The CLI runner now supports direct benchmarking of any saved flow:
+
+```bash
+# Benchmark all modes
+python run_cli.py my_flow --benchmark --benchmark-iters 100
+
+# Run in specific mode
+python run_cli.py my_flow --mode compiled --compiled-file my_flow_compiled.py
+
+# Show metrics after run
+python run_cli.py my_flow --show-metrics
+```
+
+Example output:
+```
+  Mode         Avg (ms)       Speedup
+  ------------------------------------
+  data         57.52          1.00x
+  data opt     18.99          3.03x
+  compiled      3.57         16.12x
+
+  Compilation benchmark: 10.15 ms avg (n=10)
+  Metrics saved to: cli_benchmark_results.json
+```
+
+
+## ryvencore Public API (Full Surface)
+
+```
+rc.Session          — top-level project manager
+rc.Flow             — graph container (nodes, edges, executors)
+rc.Node             — base class for all node blueprints
+rc.Data             — inter-node data wrapper
+rc.NodeInputType    — input port blueprint
+rc.NodeOutputType   — output port blueprint
+rc.FlowCompiler     — flow-to-standalone-script compiler
+rc.Metrics          — timing/benchmarking metrics collector
+rc.global_metrics() — global metrics singleton
+rc.FlowAlg          — algorithm modes (DATA, DATA_OPT, EXEC, COMPILED)
+rc.AddOn            — add-on base class
+rc.serialize()      — pickle+base64 encoder
+rc.deserialize()    — pickle+base64 decoder
+rc.InfoMsgs         — debug logging toggle
+```

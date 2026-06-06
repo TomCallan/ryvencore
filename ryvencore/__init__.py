@@ -8,6 +8,7 @@ from .Node import Node
 from .NodePortType import NodeInputType, NodeOutputType
 from .utils import serialize, deserialize
 from .Compiler import FlowCompiler
+from .Metrics import Metrics, global_metrics
 
 def set_complete_data_func(func):
     from .Base import Base

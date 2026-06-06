@@ -88,6 +88,8 @@ Assumptions:
     * no non-terminating feedback loops with exec connections
 
 """
+import time as _time
+
 from .Base import Base, Event
 from .Data import Data
 from .FlowExecutor import DataFlowNaive, DataFlowOptimized, FlowExecutor, executor_from_flow_alg
@@ -545,3 +547,86 @@ class Flow(Base):
                     outputs_data[d]['dependent node outputs'] += [i_n, i_o]
 
         return list(outputs_data.values())
+
+    def benchmark_execution(self, trigger_fn, mode: str,
+                            iterations: int = 100,
+                            bytes_processed: int = 0) -> dict:
+        """
+        Run a benchmark of this flow in the given algorithm mode.
+
+        Args:
+            trigger_fn: Callable that triggers one flow execution.
+            mode: Algorithm mode name ('data', 'data opt', 'compiled', etc.)
+            iterations: Number of execution iterations.
+            bytes_processed: Estimated bytes processed per iteration.
+
+        Returns:
+            Dict with min/avg/max times (ms), throughput (MB/s), and raw times.
+        """
+        from .Metrics import global_metrics
+
+        # Ensure we're in the requested mode
+        current_mode = self.algorithm_mode()
+        if current_mode != mode:
+            self.set_algorithm_mode(mode)
+
+        flow_name = self.title
+        times = []
+
+        for i in range(iterations):
+            global_metrics().start_execution(flow_name, mode)
+            t0 = _time.perf_counter()
+            trigger_fn()
+            elapsed = _time.perf_counter() - t0
+            global_metrics().stop_execution(flow_name, mode,
+                                            bytes_processed=bytes_processed,
+                                            iterations=1)
+            times.append(elapsed * 1000.0)
+
+        total_bytes = bytes_processed * iterations
+        total_sec = sum(times) / 1000.0
+        throughput = (total_bytes / (1024 * 1024)) / total_sec if total_sec > 0 else 0
+
+        return {
+            'mode': mode,
+            'iterations': iterations,
+            'min_ms': min(times),
+            'avg_ms': sum(times) / len(times),
+            'max_ms': max(times),
+            'throughput_mb_s': throughput,
+            'total_bytes': total_bytes,
+            'times_ms': times,
+        }
+
+    def compare_algorithms(self, trigger_fn,
+                           modes=('data', 'data opt', 'compiled'),
+                           iterations: int = 100,
+                           bytes_per_iter: int = 0) -> dict:
+        """
+        Benchmark the same trigger across multiple algorithm modes and return
+        a comparison showing speedup ratios.
+
+        Returns:
+            Dict mapping mode -> benchmark result, plus a 'speedups' dict.
+        """
+        results = {}
+        for mode in modes:
+            results[mode] = self.benchmark_execution(
+                trigger_fn, mode, iterations=iterations,
+                bytes_processed=bytes_per_iter
+            )
+
+        # Compute speedups vs naive data flow
+        naive_avg = results.get('data', {}).get('avg_ms', None)
+        speedups = {}
+        if naive_avg and naive_avg > 0:
+            for mode in modes:
+                if mode == 'data':
+                    speedups[mode] = 1.0
+                else:
+                    mavg = results.get(mode, {}).get('avg_ms')
+                    if mavg and mavg > 0:
+                        speedups[mode] = naive_avg / mavg
+
+        results['speedups'] = speedups
+        return results

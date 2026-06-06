@@ -10,6 +10,7 @@ sys.path.append(current_dir)
 sys.path.append(os.path.join(current_dir, 'nodes'))
 
 import ryvencore as rc
+from ryvencore.Metrics import global_metrics
 from nodes.base import WebNode
 
 NODE_CLASSES = []
@@ -36,7 +37,11 @@ def main():
     parser.add_argument('project_file', nargs='?', default='flow_project.json', help='Path to flow project file')
     parser.add_argument('--compile', action='store_true', help='Compile the flow and exit')
     parser.add_argument('--compiled-file', type=str, default=None, help='Active compiled file to use in compiled execution mode')
-    
+    parser.add_argument('--benchmark', action='store_true', help='Run benchmark comparing all algorithm modes')
+    parser.add_argument('--benchmark-iters', type=int, default=100, help='Benchmark iterations per mode')
+    parser.add_argument('--mode', type=str, default=None, choices=['data', 'data opt', 'exec', 'compiled'], help='Set execution mode override')
+    parser.add_argument('--show-metrics', action='store_true', help='Show full metrics after run')
+
     args = parser.parse_args()
     filepath = args.project_file
 
@@ -92,6 +97,50 @@ def main():
     print(f"\nFlow '{flow.title}' loaded successfully!")
     print(f" - Nodes count: {len(flow.nodes)}")
 
+    # --- Benchmark Mode ---
+    if args.benchmark:
+        print(f"\n{'='*50}")
+        print(f"  BENCHMARK: {flow.title}")
+        print(f"{'='*50}")
+
+        # Find trigger nodes
+        triggers = [n for n in flow.nodes if type(n).__name__ == 'TriggerNode']
+
+        def trigger_fn():
+            for t in triggers:
+                t.update()
+
+        results = flow.compare_algorithms(
+            trigger_fn,
+            modes=('data', 'data opt', 'compiled'),
+            iterations=args.benchmark_iters,
+            bytes_per_iter=0
+        )
+
+        print(f"\n  Results ({args.benchmark_iters} iterations each):")
+        print(f"  {'Mode':<12s} {'Avg (ms)':<14s} {'Min (ms)':<14s} {'Max (ms)':<14s} {'Speedup':<10s}")
+        print(f"  {'-'*60}")
+        for mode in ('data', 'data opt', 'compiled'):
+            r = results.get(mode, {})
+            if r:
+                sp = results.get('speedups', {}).get(mode, 1.0)
+                print(f"  {mode:<12s} {r['avg_ms']:<14.3f} {r['min_ms']:<14.3f} {r['max_ms']:<14.3f} {sp:<10.2f}x")
+
+        # Compilation benchmark
+        print(f"\n  Compilation benchmark:")
+        comp_bench = rc.FlowCompiler.benchmark_compile(flow, iterations=10)
+        print(f"    {comp_bench['avg_ms']:.3f} ms avg (n={comp_bench['iterations']})")
+
+        print(global_metrics().summary(flow.title))
+
+        # Save metrics
+        metrics_path = os.path.join(current_dir, 'cli_benchmark_results.json')
+        with open(metrics_path, 'w') as f:
+            json.dump(global_metrics().to_dict(), f, indent=2)
+        print(f"\n  Metrics saved to: {metrics_path}")
+        sys.exit(0)
+
+    # --- Normal execution mode ---
     def cli_on_output_changed(port):
         try:
             port_index = port.node.outputs.index(port)
@@ -101,17 +150,21 @@ def main():
         print(f"[CLI Realtime Update] Node {port.node.title} (ID: {port.node.global_id}) output[{port_index}] -> {val}")
 
     flow.output_changed.sub(cli_on_output_changed)
-    
+
+    if args.mode:
+        flow.set_algorithm_mode(args.mode)
+        print(f" - Algorithm mode override: {args.mode}")
+
     if args.compiled_file:
         flow.active_compiled_file = args.compiled_file
         flow.set_algorithm_mode('compiled')
-        
+
     print(f" - Execution mode: {flow.algorithm_mode()}")
     if flow.algorithm_mode() == 'compiled':
         # Trigger compiled executor initialization/validation
         flow.executor.compile_and_load()
         print(f" - Active compiled file: {flow.active_compiled_file}")
-    
+
     # Count loops
     loops_count = sum(1 for n in flow.nodes if getattr(n, 'loop_enabled', False))
     print(f" - Active loops count: {loops_count}")
@@ -123,7 +176,7 @@ def main():
             triggers = [n for n in flow.nodes if type(n).__name__ == 'TriggerNode']
             for t in triggers:
                 flow.executor.update_node(t, -1)
-                
+
         while True:
             time.sleep(1.0)
     except KeyboardInterrupt:
@@ -132,6 +185,9 @@ def main():
             if hasattr(n, 'stop_loop'):
                 n.stop_loop()
         print("Flow execution stopped.")
+
+    if args.show_metrics:
+        print(global_metrics().summary(flow.title))
 
 if __name__ == '__main__':
     main()
