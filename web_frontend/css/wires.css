@@ -1,0 +1,13 @@
+/* SVG Wires Layer */
+.svg-connections { position: absolute; top: 0; left: 0; width: 5000px; height: 5000px; pointer-events: none; z-index: 1; overflow: visible; }
+.wire-path {
+    fill: none; stroke: var(--port-data); stroke-width: 3.5px; stroke-linecap: round;
+    pointer-events: stroke; cursor: pointer; transition: stroke-width var(--transition-fast), stroke var(--transition-fast);
+}
+.wire-path:hover { stroke-width: 5.5px; filter: url(#wire-glow); }
+.wire-path.exec { stroke: var(--port-exec); }
+.wire-path.exec:hover { filter: url(#exec-glow); }
+.wire-path.drawing { stroke-dasharray: 6 4; animation: dash 1s linear infinite; opacity: 0.75; }
+@keyframes dash { to { stroke-dashoffset: -20; } }
+.wire-path.virtual-trigger { stroke: #ab47bc; stroke-dasharray: 6 4; stroke-width: 3px; opacity: 0.8; }
+.wire-path.virtual-trigger:hover { stroke-width: 5px; filter: url(#exec-glow); opacity: 1; }

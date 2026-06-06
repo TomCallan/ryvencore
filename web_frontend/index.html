@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ryvencore Web Studio</title>
-    <!-- Google Fonts & Icons -->
+    <!-- Fonts & Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-    
-    <!-- jQuery -->
+
+    <!-- CDN: jQuery (foundational DOM/AJAX layer) -->
     <script src="https://code.jquery.com/jquery-3.6.4.min.js" integrity="sha256-oP6HI9z1XaZNBrJURtCoUT5SUnxFr8s3BzRl+cbzUq8=" crossorigin="anonymous"></script>
-    
+
     <link rel="stylesheet" href="index.css">
 </head>
 <body>
@@ -21,14 +21,19 @@
         <header class="app-header">
             <div class="logo-area">
                 <span class="material-icons-round logo-icon">blur_on</span>
-                <h1 style="display: flex; align-items: center; gap: 8px;">ryvencore <span>Studio</span> <span id="compiled-badge" style="display:none; background: linear-gradient(135deg, #ab47bc, #7b1fa2); color: white; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 0 10px rgba(171, 71, 188, 0.4);">Compiled</span><span id="recompile-badge" style="display:none; background: linear-gradient(135deg, #ff9800, #f57c00); color: white; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 0 10px rgba(255, 152, 0, 0.4); margin-left: 6px;">Recompile Required</span></h1>
+                <h1 style="display:flex;align-items:center;gap:8px;">
+                    ryvencore
+                    <span>Studio</span>
+                    <span id="compiled-badge" style="display:none;background:linear-gradient(135deg,#ab47bc,#7b1fa2);color:white;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;box-shadow:0 0 10px rgba(171,71,188,0.4);">Compiled</span>
+                    <span id="recompile-badge" style="display:none;background:linear-gradient(135deg,#ff9800,#f57c00);color:white;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;box-shadow:0 0 10px rgba(255,152,0,0.4);margin-left:6px;">Recompile Required</span>
+                </h1>
             </div>
-            
+
             <div class="controls-area">
                 <div class="control-group">
-                    <div style="display: flex; align-items: center; gap: 6px;">
+                    <div style="display:flex;align-items:center;gap:6px;">
                         <label for="alg-mode-select">Execution Mode</label>
-                        <span class="material-icons-round info-icon-btn" id="btn-mode-info" style="font-size: 14px; cursor: pointer; color: var(--text-secondary);" title="Show execution modes info">info</span>
+                        <span class="material-icons-round info-icon-btn" id="btn-mode-info" style="font-size:14px;cursor:pointer;color:var(--text-secondary);" title="Show execution modes info">info</span>
                     </div>
                     <select id="alg-mode-select">
                         <option value="data">Data Flow (Naive)</option>
@@ -36,18 +41,14 @@
                         <option value="compiled">Run Compiled (Optimized Code)</option>
                     </select>
                 </div>
-                
-                <div class="control-group" id="compiled-file-group" style="display: none;">
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <label for="compiled-file-select">Compiled File</label>
-                    </div>
-                    <select id="compiled-file-select" style="min-width: 180px;">
-                        <!-- dynamic options -->
-                    </select>
+
+                <div class="control-group" id="compiled-file-group" style="display:none;">
+                    <label for="compiled-file-select">Compiled File</label>
+                    <select id="compiled-file-select" style="min-width:180px;"></select>
                 </div>
-                
+
                 <div class="divider"></div>
-                
+
                 <button id="btn-save" class="btn btn-secondary" title="Save to project file">
                     <span class="material-icons-round">save</span> Save
                 </button>
@@ -63,7 +64,7 @@
                 <button id="btn-pause-view" class="btn btn-secondary" title="Pause canvas node updates (background execution continues)">
                     <span class="material-icons-round">visibility</span> Pause View
                 </button>
-                <button id="btn-compile" class="btn btn-secondary" title="Compile current flow into a standalone Python file" style="background: linear-gradient(135deg, #ab47bc, #7b1fa2); color: white; border: none; font-weight: 500;">
+                <button id="btn-compile" class="btn btn-secondary" title="Compile current flow into a standalone Python file" style="background:linear-gradient(135deg,#ab47bc,#7b1fa2);color:white;border:none;font-weight:500;">
                     <span class="material-icons-round">developer_mode</span> Compile
                 </button>
                 <button id="btn-run" class="btn btn-primary" title="Trigger execution update">
@@ -80,21 +81,16 @@
                     <span class="material-icons-round">search</span>
                     <input type="text" id="node-search" placeholder="Search nodes...">
                 </div>
-                
                 <div class="library-scroll">
-                    <!-- Categories will be generated dynamically -->
                     <div id="node-library" class="node-library"></div>
                 </div>
             </aside>
 
             <!-- Node Editor Canvas -->
             <main class="canvas-viewport" id="canvas-viewport">
-                <!-- Grid background & pan/zoom wrapper -->
                 <div class="canvas-content" id="canvas-content">
-                    <!-- SVG Overlay for wires -->
                     <svg class="svg-connections" id="svg-connections">
                         <defs>
-                            <!-- Glow effect filter -->
                             <filter id="wire-glow" x="-10%" y="-10%" width="120%" height="120%">
                                 <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#5c6bc0" flood-opacity="0.3"/>
                             </filter>
@@ -102,19 +98,12 @@
                                 <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#ab47bc" flood-opacity="0.3"/>
                             </filter>
                         </defs>
-                        <!-- Connections drawn dynamically -->
                         <g id="wires-group"></g>
-                        <!-- Active wire when drawing connection -->
                         <path id="active-wire" class="wire-path drawing" d="" style="display:none;"></path>
                     </svg>
-                    
-                    <!-- Nodes Container -->
-                    <div class="nodes-layer" id="nodes-layer">
-                        <!-- Nodes generated dynamically -->
-                    </div>
+                    <div class="nodes-layer" id="nodes-layer"></div>
                 </div>
-                
-                <!-- Zoom HUD -->
+
                 <div class="canvas-hud">
                     <button id="btn-zoom-in" class="hud-btn"><span class="material-icons-round">add</span></button>
                     <span id="zoom-level">100%</span>
@@ -142,9 +131,7 @@
                 </div>
             </div>
             <div class="footer-body">
-                <div class="log-list" id="log-list">
-                    <!-- Logs generated dynamically -->
-                </div>
+                <div class="log-list" id="log-list"></div>
             </div>
         </footer>
     </div>
@@ -153,34 +140,32 @@
     <div class="modal-overlay" id="mode-info-modal" style="display:none;">
         <div class="modal-card">
             <div class="modal-header">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span class="material-icons-round" style="color: var(--primary);">info</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="material-icons-round" style="color:var(--primary);">info</span>
                     <h2>Execution Modes Comparison</h2>
                 </div>
-                <button class="modal-close" id="btn-close-modal">
-                    <span class="material-icons-round">close</span>
-                </button>
+                <button class="modal-close modal-cancel"><span class="material-icons-round">close</span></button>
             </div>
             <div class="modal-body">
-                <div class="mode-info-card" style="border-left-color: var(--cat-math);">
-                    <h3 style="color: var(--cat-math);">Data Flow (Naive)</h3>
+                <div class="mode-info-card" style="border-left-color:var(--cat-math);">
+                    <h3 style="color:var(--cat-math);">Data Flow (Naive)</h3>
                     <p><strong>Mechanism:</strong> Data is propagated forward immediately on any output value change.</p>
-                    <p><strong>Use Cases:</strong> Simple, linear data processing pipelines. Fast to setup with no graph compilation overhead.</p>
+                    <p><strong>Use Cases:</strong> Simple, linear data processing pipelines.</p>
                 </div>
-                <div class="mode-info-card" style="border-left-color: var(--cat-string);">
-                    <h3 style="color: var(--cat-string);">Data Flow (Optimized)</h3>
-                    <p><strong>Mechanism:</strong> Compiler runs topological sorting so that each node is executed at most once per update sweep.</p>
-                    <p><strong>Use Cases:</strong> Complex data flows with split-merge paths ("diamonds") where redundant calculations must be avoided.</p>
+                <div class="mode-info-card" style="border-left-color:var(--cat-string);">
+                    <h3 style="color:var(--cat-string);">Data Flow (Optimized)</h3>
+                    <p><strong>Mechanism:</strong> Compiler runs topological sorting so each node executes at most once per sweep.</p>
+                    <p><strong>Use Cases:</strong> Complex data flows with split-merge paths where redundant calculations must be avoided.</p>
                 </div>
-                <div class="mode-info-card" style="border-left-color: var(--cat-exec);">
-                    <h3 style="color: var(--cat-exec);">Force Trigger</h3>
-                    <p><strong>Mechanism:</strong> Prevents nodes from automatically propagating updates downstream when inputs change. Output updates locally, but is only pushed downstream when the flow is manually run or triggered by a button node.</p>
-                    <p><strong>Use Cases:</strong> Staging changes or controlling propagation checkpoints without continuous automatic recalculation.</p>
+                <div class="mode-info-card" style="border-left-color:var(--cat-exec);">
+                    <h3 style="color:var(--cat-exec);">Force Trigger</h3>
+                    <p><strong>Mechanism:</strong> Prevents nodes from automatically propagating updates downstream when inputs change.</p>
+                    <p><strong>Use Cases:</strong> Staging changes or controlling propagation checkpoints without continuous recalculation.</p>
                 </div>
-                <div class="mode-info-card" style="border-left-color: var(--primary);">
-                    <h3 style="color: var(--primary);">Run Compiled</h3>
-                    <p><strong>Mechanism:</strong> The visual graph is dynamically compiled into a single, optimized Python script in-process. All dynamic events/session wrappers are bypassed. Logic runs at native Python speed, and results are written back to the canvas.</p>
-                    <p><strong>Use Cases:</strong> Maximum performance backtesting, live socket feeds, and production deployments. Automatic dynamic propagation is disabled; execution triggers only when manually run or ticked by loops.</p>
+                <div class="mode-info-card" style="border-left-color:var(--primary);">
+                    <h3 style="color:var(--primary);">Run Compiled</h3>
+                    <p><strong>Mechanism:</strong> The visual graph is compiled into a single optimized Python script in-process. All dynamic events/session wrappers are bypassed.</p>
+                    <p><strong>Use Cases:</strong> Maximum performance backtesting, live socket feeds, and production deployments.</p>
                 </div>
             </div>
         </div>
@@ -190,21 +175,19 @@
     <div class="modal-overlay" id="save-flow-modal" style="display:none;">
         <div class="modal-card">
             <div class="modal-header">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span class="material-icons-round" style="color: var(--primary);">save</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="material-icons-round" style="color:var(--primary);">save</span>
                     <h2>Save Project Flow</h2>
                 </div>
-                <button class="modal-close modal-cancel">
-                    <span class="material-icons-round">close</span>
-                </button>
+                <button class="modal-close modal-cancel"><span class="material-icons-round">close</span></button>
             </div>
             <div class="modal-body">
-                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 4px;">Enter a name to save the current workspace flow layout and configuration.</p>
+                <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:4px;">Enter a name to save the current workspace flow.</p>
                 <input type="text" id="save-flow-name" class="modal-input" placeholder="e.g. backtesting_flow">
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary modal-cancel">Cancel</button>
-                <button class="btn btn-primary" id="btn-confirm-save" style="background: linear-gradient(135deg, #6366f1, #4f46e5); border: none;">Save Flow</button>
+                <button class="btn btn-primary" id="btn-confirm-save" style="background:linear-gradient(135deg,#6366f1,#4f46e5);border:none;">Save Flow</button>
             </div>
         </div>
     </div>
@@ -213,19 +196,15 @@
     <div class="modal-overlay" id="load-flow-modal" style="display:none;">
         <div class="modal-card">
             <div class="modal-header">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span class="material-icons-round" style="color: var(--primary);">folder_open</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="material-icons-round" style="color:var(--primary);">folder_open</span>
                     <h2>Load Project Flow</h2>
                 </div>
-                <button class="modal-close modal-cancel">
-                    <span class="material-icons-round">close</span>
-                </button>
+                <button class="modal-close modal-cancel"><span class="material-icons-round">close</span></button>
             </div>
             <div class="modal-body">
-                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 8px;">Select a saved project flow from the list below to load into the workspace:</p>
-                <div class="flow-list" id="load-flow-list">
-                    <!-- Dynamic items here -->
-                </div>
+                <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:8px;">Select a saved project flow to load:</p>
+                <div class="flow-list" id="load-flow-list"></div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary modal-cancel">Close</button>
@@ -234,58 +213,53 @@
     </div>
 
     <!-- Radial Menu -->
-    <div class="radial-menu" id="radial-menu" style="display: none;">
-        <div class="radial-menu-center">
-            <span class="material-icons-round">menu</span>
-        </div>
-        <div class="radial-menu-item" data-action="add-node" style="--angle: 0deg;" title="Add Node">
+    <div class="radial-menu" id="radial-menu" style="display:none;">
+        <div class="radial-menu-center"><span class="material-icons-round">menu</span></div>
+        <div class="radial-menu-item" data-action="add-node" style="--angle:0deg;" title="Add Node">
             <span class="material-icons-round">add</span>
             <span class="radial-label">Add Node</span>
         </div>
-        <div class="radial-menu-item" data-action="save" style="--angle: 72deg;" title="Save Flow">
+        <div class="radial-menu-item" data-action="save" style="--angle:72deg;" title="Save Flow">
             <span class="material-icons-round">save</span>
             <span class="radial-label">Save Flow</span>
         </div>
-        <div class="radial-menu-item" data-action="load" style="--angle: 144deg;" title="Load Flow">
+        <div class="radial-menu-item" data-action="load" style="--angle:144deg;" title="Load Flow">
             <span class="material-icons-round">folder_open</span>
             <span class="radial-label">Load Flow</span>
         </div>
-        <div class="radial-menu-item" data-action="clear" style="--angle: 216deg;" title="Clear Flow">
+        <div class="radial-menu-item" data-action="clear" style="--angle:216deg;" title="Clear Flow">
             <span class="material-icons-round">delete_sweep</span>
             <span class="radial-label">Clear Flow</span>
         </div>
-        <div class="radial-menu-item" data-action="pause" style="--angle: 288deg;" title="Toggle Pause">
+        <div class="radial-menu-item" data-action="pause" style="--angle:288deg;" title="Toggle Pause">
             <span class="material-icons-round" id="radial-pause-icon">pause</span>
             <span class="radial-label" id="radial-pause-label">Pause</span>
         </div>
     </div>
 
     <!-- Node Radial Menu -->
-    <div class="radial-menu" id="node-radial-menu" style="display: none; z-index: 10001;">
-        <div class="radial-menu-center">
-            <span class="material-icons-round">settings</span>
-        </div>
-        <div class="radial-menu-item" data-action="toggle-repeat" style="--angle: 0deg;" title="Toggle Repeat Option">
+    <div class="radial-menu" id="node-radial-menu" style="display:none;z-index:10001;">
+        <div class="radial-menu-center"><span class="material-icons-round">settings</span></div>
+        <div class="radial-menu-item" data-action="toggle-repeat" style="--angle:0deg;" title="Toggle Repeat Option">
             <span class="material-icons-round">schedule</span>
             <span class="radial-label" id="node-radial-repeat-label">Repeat</span>
         </div>
-        <div class="radial-menu-item" data-action="toggle-force" style="--angle: 120deg;" title="Toggle Force Trigger Option">
+        <div class="radial-menu-item" data-action="toggle-force" style="--angle:120deg;" title="Toggle Force Trigger Option">
             <span class="material-icons-round">bolt</span>
             <span class="radial-label" id="node-radial-force-label">Force Trigger</span>
         </div>
-        <div class="radial-menu-item" data-action="toggle-wait" style="--angle: 240deg;" title="Toggle Wait Complete Option">
+        <div class="radial-menu-item" data-action="toggle-wait" style="--angle:240deg;" title="Toggle Wait Complete Option">
             <span class="material-icons-round">hourglass_bottom</span>
             <span class="radial-label" id="node-radial-wait-label">Wait Complete</span>
         </div>
     </div>
 
     <!-- Radial Search Popup -->
-    <div class="radial-search-popup" id="radial-search-popup" style="display: none; position: absolute; z-index: 10000; width: 220px; background: rgba(24, 24, 36, 0.98); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.6); padding: 8px; flex-direction: column; gap: 6px; backdrop-filter: blur(12px);">
-        <input type="text" id="radial-search-input" placeholder="Search nodes..." style="width: 100%; padding: 6px 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.25); color: #fff; font-size: 0.8rem; outline: none;">
-        <div id="radial-search-results" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px;">
-        </div>
+    <div class="radial-search-popup" id="radial-search-popup" style="display:none;position:absolute;z-index:10000;">
+        <input type="text" id="radial-search-input" placeholder="Search nodes..." style="width:100%;padding:6px 10px;border-radius:4px;">
+        <div id="radial-search-results" style="max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;"></div>
     </div>
 
-    <script src="index.js"></script>
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>

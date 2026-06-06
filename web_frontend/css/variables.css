@@ -1,0 +1,66 @@
+/* Design System & Variables */
+:root {
+    --bg-darker: #0d0d12;
+    --bg-dark: #12121a;
+    --bg-card: #181824;
+    --bg-hover: #212133;
+    --border-color: #2a2a3f;
+    --text-primary: #f1f1f7;
+    --text-secondary: #a0a0ba;
+    --text-muted: #62627a;
+
+    --primary: #6366f1;
+    --primary-hover: #4f46e5;
+    --primary-glow: rgba(99, 102, 241, 0.35);
+
+    --danger: #ef4444;
+    --danger-hover: #dc2626;
+
+    /* Category Colors */
+    --cat-math: #f59e0b;
+    --cat-string: #06b6d4;
+    --cat-logic: #10b981;
+    --cat-utility: #3b82f6;
+    --cat-exec: #a855f7;
+
+    /* Port Colors */
+    --port-data: #00bcd4;
+    --port-exec: #e040fb;
+
+    --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Reset */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body, html {
+    width: 100%; height: 100%;
+    font-family: 'Outfit', sans-serif;
+    background-color: var(--bg-darker);
+    color: var(--text-primary);
+    overflow: hidden;
+}
+
+/* Scrollbar */
+.library-scroll::-webkit-scrollbar { width: 6px; }
+.library-scroll::-webkit-scrollbar-track { background: transparent; }
+.library-scroll::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+
+/* Buttons */
+.btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 8px;
+    font-family: inherit; font-size: 0.85rem; font-weight: 500;
+    cursor: pointer; border: none; outline: none;
+    transition: all var(--transition-fast);
+}
+.btn .material-icons-round { font-size: 18px; }
+.btn-primary { background-color: var(--primary); color: white; }
+.btn-primary:hover { background-color: var(--primary-hover); box-shadow: 0 0 12px var(--primary-glow); }
+.btn-secondary { background-color: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-primary); }
+.btn-secondary:hover { background-color: rgba(255,255,255,0.1); border-color: var(--text-secondary); }
+.btn-danger { background-color: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: #fca5a5; }
+.btn-danger:hover { background-color: var(--danger); color: white; box-shadow: 0 0 12px rgba(239,68,68,0.25); }
+.btn-warning { background-color: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); color: #fcd34d; }
+.btn-warning:hover { background-color: var(--cat-math); color: white; box-shadow: 0 0 12px rgba(245,158,11,0.25); }
