@@ -4,6 +4,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import ryvencore as rc
 import run_web_server as ws
+from basic_nodes import TriggerNode, BranchNode, CounterNode
 
 def test_downstream_exec_ports():
     session = rc.Session()
@@ -12,9 +13,9 @@ def test_downstream_exec_ports():
     flow.set_algorithm_mode('exec')
     
     # TriggerNode -> BranchNode -> CounterNode
-    n_trig = flow.create_node(ws.TriggerNode)
-    n_branch = flow.create_node(ws.BranchNode)
-    n_counter = flow.create_node(ws.CounterNode)
+    n_trig = flow.create_node(TriggerNode)
+    n_branch = flow.create_node(BranchNode)
+    n_counter = flow.create_node(CounterNode)
     
     # Connections
     flow.connect_nodes(n_trig.outputs[0], n_branch.inputs[0]) # exec line

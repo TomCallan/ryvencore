@@ -293,9 +293,41 @@ select:focus {
     cursor: grab;
     margin-bottom: 8px;
     display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    transition: all var(--transition-fast);
+}
+
+.node-item-main {
+    display: flex;
     justify-content: space-between;
     align-items: center;
+    width: 100%;
+}
+
+.node-item-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.node-tag {
+    font-size: 0.62rem;
+    padding: 2px 6px;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    cursor: pointer;
+    user-select: none;
     transition: all var(--transition-fast);
+}
+
+.node-tag:hover {
+    background-color: var(--cat-color, var(--primary));
+    color: #fff;
+    border-color: transparent;
 }
 
 .node-item:hover {
@@ -1065,5 +1097,94 @@ select:focus {
     font-size: 0.6rem;
     opacity: 0.6;
 }
+
+/* Save / Load Modals CSS */
+.modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.modal-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    color: #fff;
+    font-size: 0.9rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.modal-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.flow-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 250px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.flow-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+
+.flow-list-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--primary);
+    transform: translateY(-1px);
+}
+
+.flow-item-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.flow-item-icon {
+    color: var(--primary);
+    font-size: 20px;
+}
+
+.flow-item-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.flow-item-action {
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--primary);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.flow-list-item:hover .flow-item-action {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
 
 

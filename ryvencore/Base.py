@@ -129,11 +129,21 @@ class Base:
     # non-static
 
     def __init__(self):
-        self.global_id = self._global_id_ctr.count()
+        self._global_id = None
 
         # the following attributes are set in :code:`load()`
         self.prev_global_id = None
         self.prev_version = None
+
+    @property
+    def global_id(self):
+        if getattr(self, '_global_id', None) is None:
+            self._global_id = self._global_id_ctr.count()
+        return self._global_id
+
+    @global_id.setter
+    def global_id(self, val):
+        self._global_id = val
 
     def data(self) -> Dict:
         """

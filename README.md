@@ -211,3 +211,109 @@ The CLI runner `run_cli.py`:
 4. Automatically spins up looping/timer nodes in background daemon threads and handles graph updates using the ryvencore engine.
 5. Captures and prints execution outputs (e.g. from `LogNode`) directly to stdout.
 6. Gracefully terminates all active loops upon receiving `Ctrl+C`.
+
+---
+
+## High-Efficiency & High-Compute Nodes (Phase 2)
+
+ryvencore Studio supports processing massive datasets and high-compute tasks natively on the backend, without choking data transmission or blocking the web browser:
+
+1.  **Wait Complete Flag:** Each node card features a **Wait Complete** checkbox. When checked, the node blocks overlapping concurrent/re-entrant triggers (e.g., if a loop interval is 0.1s but a deep learning model forward pass takes 0.5s), executing safely and linearly.
+2.  **Execution Timer Node (`ExecutionTimerNode`):** Profiles execution times directly within the flow. When triggered, it executes downstream nodes, measures the total time elapsed (in milliseconds), and outputs the duration.
+3.  **Lazy File Reader Node (`LazyFileReaderNode`):** Lazily streams large text/CSV files line-by-line or chunk-by-chunk in-memory, keeping file handles and pointer offsets in the Python backend. Passing memory chunks locally avoids JSON serialization overhead to the client.
+4.  **CSV Parser Node (`CsvParserNode`):** Parses loaded raw string chunks on the fly using standard library modules and forwards nested structured arrays downstream.
+
+### Blazing Fast Python Script & REPL Execution Caching
+Both the **Python Script** node and **Python REPL** node compile their AST tree once and cache the resulting bytecode. Instead of parsing the code, copying, and compiling the AST tree on every single node execution:
+* The AST is modified once to direct input lookups to a dynamic `_IN_` namespace key.
+* For subsequent executions, input values are populated into the namespace at runtime, and `exec()` is run directly on the cached bytecode.
+* For `PythonScriptNode`, file modification times (`mtime`) are checked so recompilation only occurs when files actually change.
+* Result: Pipeline updates execute in microseconds, bypassing all I/O and compilation overhead!
+
+### Example Workflows
+
+ryvencore Studio includes several pre-configured workflows showcasing different features and optimizations:
+
+1. **Pipeline Script Workflow (`pipeline_flow`)**
+   * **Use Case:** AST-caching compiled Python script runner pipeline.
+   * **Behavior:** Coordinates three step scripts (`step1_generate.py`, `step2_analyze.py`, `step3_format.py`) checking constraints and formatting logs, running at microsecond speed with cache hits.
+   * **Run:**
+     ```bash
+     python run_cli.py pipeline_flow
+     ```
+
+2. **Efficiency Benchmark Workflow (`efficiency_flow`)**
+   * **Use Case:** Lazy file parsing and execution profiling.
+   * **Behavior:** Automatically streams lines from a CSV dataset, parses them, calculates aggregates, and logs durations using `ExecutionTimerNode`.
+   * **Run:**
+     ```bash
+     python run_cli.py efficiency_flow
+     ```
+
+3. **High-Frequency Real-Time Workflow (`realtime_flow`)**
+   * **Use Case:** Simulated real-time tick streaming and instant decision logic.
+   * **Behavior:** Uses a high-speed trigger loop (20Hz) running in a background thread to generate random price ticks, feed a comparator node, run an if/else selector, and log output signals. Demonstrates thread-safe execution and O(1) propagation.
+   * **Run:**
+     ```bash
+     python run_cli.py realtime_flow
+     ```
+
+4. **Batch Backtesting Workflow (`backtesting_flow`)**
+   * **Use Case:** Simulating historical backtesting with large files.
+   * **Behavior:** Streams raw data blocks, computes the sliding average price using `ArrayCalculatorNode`, compares against a threshold, determines buy/sell signals, and profiles end-to-end throughput.
+   * **Run:**
+     ```bash
+     python run_cli.py backtesting_flow
+     ```
+
+5. **Showcase Compiled Workflow (`compiled_flow`)**
+   * **Use Case:** Executing complex hybrid flows combining CLI commands, Python REPL, and Python scripts at native speed.
+   * **Behavior:** Runs a Trigger -> Timer -> Counter -> CLI script (executing shell command via `subprocess`) -> Python REPL (inline code processing) -> Formatting script -> Log outputs. Configured to run in the third execution mode (`compiled`).
+   * **Run:**
+     ```bash
+     python run_cli.py compiled_flow
+     ```
+
+---
+
+## High-Performance Core & Flow Compilation (Phase 3)
+
+The ryvencore core has been optimized for high-throughput processing (e.g. streaming 100M+ rows of OHLCV/orderbook data, real-time feeds, and fast backtesting):
+
+### 1. Core Optimizations
+*   **Lazy ID Generation:** Transient `Data` instances skip global ID generation overhead, saving millions of unnecessary calls to the global ID counter when streaming ticks/frames.
+*   **O(1) Output Propagation:** Removed the O(N) loop resetting output flags across the entire graph. Output update status is stored in dynamic dictionary keys and resolved in O(1) time.
+*   **DP Waiting Cache:** The topological wait count generation algorithm caches successor counts per root node. Graph traversal runs in O(1) lookup time instead of O(V + E) on subsequent ticks.
+*   **Thread-Local Execution Isolation:** Transparent properties map executor states (active nodes, output flags, propagation lists) to thread-local storage (`threading.local()`), allowing safe concurrent execution of flows across multiple threads (e.g. live socket trading feeds).
+*   **Memory Leak Fix:** Loaded ID mapping references are automatically cleared at the end of the session load process, reclaiming substantial memory.
+
+### 2. Standalone Flow Compiler & "Run Compiled" Execution Mode
+You can compile any visual node graph into a single, self-contained Python script. This completely eliminates the overhead of the execution framework (executors, events, sessions) and allows running backtesting/trading at native python speed.
+
+*   **How it works:** FlowCompiler discovers all node instances and classes, collects their exact source code using `inspect.getsource()`, mock-binds ports and connections, and outputs a single standalone python script containing the topologically sorted graph logic.
+*   **Run Compiled Mode (In-Process):** Select **Run Compiled** in the Execution Mode dropdown. This mode is only accessible if the current workflow has already been compiled. In compiled mode, automatic node execution and value propagation during canvas edits are disabled. Logic only triggers when you click **Run Compiled** or via repeating loops.
+*   **How to compile (Web UI):** Click the purple **Compile** button in the header toolbar to run the backend compilation script. This saves a standalone Python script to `compiled/<workflow>_<timestamp>.py` on the server without downloading anything.
+*   **Version Selection Dropdown:** When in compiled mode, a version selector appears in the top header to select which compiled file to execute. Entering compiled mode is blocked if no compiled file exists for the current workflow.
+*   **Structure Tracking & Force Recompile:** Any structural changes to the graph (adding nodes, links, or modifying ports) are tracked via a structure hash. If the graph differs from the active compiled file, a **Recompile Required** badge is shown. Running the compiled flow while dirty automatically triggers an automatic background recompilation before execution.
+*   **CLI Compilation & Execution:**
+    *   **Compile:** Run `python run_cli.py [flow_project.json] --compile` to compile the flow.
+    *   **Execute Compiled:** Run `python run_cli.py [flow_project.json] --compiled-file [compiled_file_name]` to run in compiled mode using the specified file. If not specified, the latest compiled file is loaded automatically.
+
+### 3. Native Python Plotting Engine & Advanced Data Nodes
+A custom modular plotting engine is implemented in the [plotting](file:///C:/Users/SXDM2/Desktop/agytests/rycore/plotting) package, enabling nodes to generate beautiful dark-mode SVG visualizations in Python and render them directly in the browser.
+
+*   **Plotting Engine (`plotting/engine.py`):**
+    *   **SVG Line Plotter:** Renders line charts with gridlines, glowing gradient area fills, and tick markers.
+    *   **SVG Orderbook Depth Plotter:** Renders standard bids (green) vs asks (red) depth curves, displaying the spread and mid-price.
+*   **New Advanced Nodes:**
+    *   `Parquet Reader`: Lazy loads datasets using Polars and scans custom row limits.
+    *   `DuckDB Query`: Connects to databases (including in-memory) and executes SQL queries.
+    *   `Advanced Plot`: Injects SVG line charts dynamically into the node card on each execution tick.
+    *   `Orderbook Plot`: Renders BTC/USDT or custom orderbook depth charts inside the node card.
+*   **Premium Save & Load Modals:**
+    *   The web browser dialogs have been upgraded to styled, dark-mode overlay modals.
+    *   The Load modal fetches and renders saved project flows as dynamic cards with status indicators.
+*   **Layout & Alignment Engine:**
+    *   Integrated a global `ResizeObserver` on node card bounds to automatically update coordinate offsets and redraw connections in real-time when inputs shrink or nodes are resized.
+
+

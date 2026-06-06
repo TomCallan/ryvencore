@@ -249,6 +249,9 @@ class Session(Base):
         for title, data in flows_data.items():
             new_flows.append(self.create_flow(title=title, data=data))
 
+        # Clear load-time ID cache to prevent memory leak
+        Base._prev_id_objs.clear()
+
         return new_flows
 
     def serialize(self) -> Dict:

@@ -23,6 +23,16 @@ $(function() {
     // Node templates dictionary
     let nodeTemplates = {};
     let currentFlowName = 'flow_project';
+    let viewUpdatesPaused = false;
+
+    // Resize observer to watch node-card sizes, update port offsets and refresh wires
+    const nodeResizeObserver = new ResizeObserver(entries => {
+        entries.forEach(entry => {
+            let nodeEl = $(entry.target);
+            cacheLocalPortOffsets(nodeEl);
+        });
+        refreshWires();
+    });
 
     // Initialization
     function init() {
@@ -49,9 +59,9 @@ $(function() {
     // Map Backend Nodes to Categories
     function getNodeCategory(title) {
         if (['Add', 'Subtract', 'Multiply', 'Divide', 'Array Calculator'].includes(title)) return 'Math';
-        if (['Number', 'String', 'Concat', 'Uppercase'].includes(title)) return 'String';
+        if (['Number', 'String', 'Concat', 'Uppercase', 'CSV Parser'].includes(title)) return 'String';
         if (['Compare', 'If/Else', 'Python REPL', 'Python Script'].includes(title)) return 'Logic';
-        if (['Random', 'Log', 'Plot'].includes(title)) return 'Utility';
+        if (['Random', 'Log', 'Plot', 'Execution Timer', 'Lazy File Reader'].includes(title)) return 'Utility';
         if (['Trigger', 'Branch', 'Counter'].includes(title)) return 'Exec';
         return 'Utility';
     }
@@ -77,10 +87,16 @@ $(function() {
                         <div class="category-title">${cat} Nodes</div>
                 `;
                 categories[cat].forEach(tpl => {
+                    let tagsHtml = (tpl.tags || []).map(t => `<span class="node-tag" data-tag="${t}">${t}</span>`).join('');
                     libraryHtml += `
                         <div class="node-item" draggable="true" data-identifier="${tpl.identifier}" data-category="${cat}">
-                            <span>${tpl.title}</span>
-                            <span class="material-icons-round add-icon" title="Add to canvas">add</span>
+                            <div class="node-item-main">
+                                <span>${tpl.title}</span>
+                                <span class="material-icons-round add-icon" title="Add to canvas">add</span>
+                            </div>
+                            <div class="node-item-tags">
+                                ${tagsHtml}
+                            </div>
                         </div>
                     `;
                 });
@@ -98,11 +114,84 @@ $(function() {
             // Update execution mode selector if needed
             $('#alg-mode-select').val(flowData.algorithm_mode);
 
+            // Enable/disable compiled option in selector
+            let optionCompiled = $('#alg-mode-select option[value="compiled"]');
+            if (flowData.compiled_exists) {
+                optionCompiled.prop('disabled', false).show();
+            } else {
+                optionCompiled.prop('disabled', true).hide();
+                if (flowData.algorithm_mode === 'compiled') {
+                    // Fall back to data flow if compiled mode selected but no compiled file exists
+                    $.ajax({
+                        url: '/api/set_alg_mode',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ mode: 'data' }),
+                        success: function() {
+                            loadFlow();
+                            addLog('[Warning]: Compiled file not found. Reverted to Data Flow mode.');
+                        }
+                    });
+                    return;
+                }
+            }
+
+            // Show/hide recompile warning badge
+            if (flowData.compiled_exists && flowData.compiled_dirty) {
+                if ($('#recompile-badge').is(':hidden')) {
+                    $('#recompile-badge').fadeIn(200);
+                    if (flowData.algorithm_mode === 'compiled') {
+                        addLog('[Warning]: Flow modified since compilation. Recompilation is required to run.');
+                    }
+                }
+            } else {
+                $('#recompile-badge').fadeOut(200);
+            }
+
+            // Customize UI based on Compiled mode
+            if (flowData.algorithm_mode === 'compiled') {
+                $('#compiled-badge').fadeIn(200);
+                $('#btn-run')
+                    .html('<span class="material-icons-round">play_arrow</span> Run Compiled')
+                    .css({
+                        'background': 'linear-gradient(135deg, #ab47bc, #7b1fa2)',
+                        'border': 'none',
+                        'box-shadow': '0 0 10px rgba(171, 71, 188, 0.4)'
+                    })
+                    .attr('title', 'Execute compiled in-process flow logic');
+                
+                let select = $('#compiled-file-select');
+                select.empty();
+                if (flowData.compiled_files && flowData.compiled_files.length > 0) {
+                    flowData.compiled_files.forEach(function(f) {
+                        select.append($('<option></option>').val(f).text(f));
+                    });
+                    if (flowData.active_compiled_file) {
+                        select.val(flowData.active_compiled_file);
+                    }
+                }
+                $('#compiled-file-group').fadeIn(200);
+            } else {
+                $('#compiled-badge').fadeOut(200);
+                $('#btn-run')
+                    .html('<span class="material-icons-round">play_arrow</span> Run Flow')
+                    .css({
+                        'background': '',
+                        'border': '',
+                        'box-shadow': ''
+                    })
+                    .attr('title', 'Trigger execution update');
+                $('#compiled-file-group').fadeOut(200);
+            }
+
             // Sync pause button
             updatePauseButtonState(flowData.execution_paused);
 
             // Render Nodes
             renderNodes(flowData.nodes);
+
+            // Sync all input, output values and option visibilities
+            updateFlowValues(flowData);
 
             // Render Connections (Wires)
             renderConnections(flowData.connections);
@@ -122,22 +211,32 @@ $(function() {
         }
     }
 
+    // Helper to compute port coords using getBoundingClientRect (zoom-aware)
+    function computePortLocalCoords(handle) {
+        let el = handle[0];
+        let nodeCard = handle.closest('.node-card');
+        if (nodeCard.length === 0) return { x: 0, y: 0 };
+        
+        let cardRect = nodeCard[0].getBoundingClientRect();
+        let handleRect = el.getBoundingClientRect();
+        
+        if (cardRect.width === 0 || cardRect.height === 0) {
+            return { x: 0, y: 0 };
+        }
+        
+        let x = (handleRect.left + handleRect.width / 2 - cardRect.left) / zoom;
+        let y = (handleRect.top + handleRect.height / 2 - cardRect.top) / zoom;
+        return { x: x, y: y };
+    }
+
     // Cache port offset coordinates relative to node card top-left
     function cacheLocalPortOffsets(nodeCardEl) {
         nodeCardEl.find('.port-handle').each(function() {
-            let handle = this;
-            let x = handle.offsetLeft + handle.offsetWidth / 2;
-            let y = handle.offsetTop + handle.offsetHeight / 2;
-            
-            let parent = handle.offsetParent;
-            while (parent && !parent.classList.contains('node-card')) {
-                x += parent.offsetLeft;
-                y += parent.offsetTop;
-                parent = parent.offsetParent;
+            let coords = computePortLocalCoords($(this));
+            if (coords.x > 0 || coords.y > 0) {
+                this.setAttribute('data-local-x', coords.x);
+                this.setAttribute('data-local-y', coords.y);
             }
-            
-            handle.setAttribute('data-local-x', x);
-            handle.setAttribute('data-local-y', y);
         });
     }
 
@@ -150,6 +249,7 @@ $(function() {
         $('.node-card').each(function() {
             let id = $(this).attr('data-id');
             if (!currentIds.includes(id)) {
+                nodeResizeObserver.unobserve(this);
                 $(this).remove();
             }
         });
@@ -161,6 +261,10 @@ $(function() {
 
             // If node doesn't exist, create it
             if (nodeEl.length === 0) {
+                let repOpt = n.repeat_option_visible || false;
+                let timerOpt = n.timer_option_visible || false;
+                let forceOpt = n.force_trigger_visible || false;
+                let waitOpt = n.wait_complete_visible || false;
                 nodeEl = $(`
                     <div class="node-card" data-id="${n.id}" data-category="${cat}">
                         <div class="node-header">
@@ -172,23 +276,28 @@ $(function() {
                             </div>
                         </div>
                         <div class="node-ports"></div>
-                        <div class="node-timer-wrapper">
-                            <div class="timer-row">
-                                <label class="timer-toggle-label">
+                        <div class="node-timer-wrapper" style="display: ${ (repOpt || timerOpt || forceOpt || waitOpt) ? 'block' : 'none' }; padding: 6px 10px; border-top: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.15);">
+                            <div class="timer-row" style="display: ${ (repOpt || timerOpt) ? 'flex' : 'none' }; align-items: center; justify-content: space-between; gap: 4px;">
+                                <label class="timer-toggle-label" style="display: ${ repOpt ? 'flex' : 'none' }; align-items: center; gap: 2px; cursor: pointer; user-select: none; font-size: 0.65rem; color: var(--text-secondary);">
                                     <input type="checkbox" class="loop-toggle" data-node="${n.id}">
-                                    <span class="material-icons-round timer-icon">schedule</span>
+                                    <span class="material-icons-round timer-icon" style="font-size: 14px;">schedule</span>
                                     <span class="timer-text">Repeat</span>
                                 </label>
-                                <input type="number" class="loop-interval" data-node="${n.id}" min="0.1" step="0.1" value="1.0">
-                                <span class="timer-unit">s</span>
+                                <div class="timer-interval-wrapper" style="display: ${ timerOpt ? 'flex' : 'none' }; align-items: center; gap: 2px;">
+                                    <input type="number" class="loop-interval" data-node="${n.id}" min="0.1" step="0.1" value="1.0" style="width: 45px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.65rem; border-radius: 3px; padding: 1px 3px; text-align: center;">
+                                    <span class="timer-unit" style="font-size: 0.6rem; color: var(--text-muted);">s</span>
+                                </div>
                             </div>
-                            <div class="force-trigger-row" style="margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.03); padding-top: 4px; display: flex; align-items: center; gap: 4px;">
-                                <label class="force-trigger-label" style="display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; font-size: 0.7rem; color: var(--text-secondary);">
-                                    <input type="checkbox" class="force-trigger-toggle" data-node="${n.id}">
-                                    <span class="material-icons-round" style="font-size: 14px; color: var(--text-muted);">lock</span>
-                                    <span>Force Trigger</span>
-                                </label>
-                            </div>
+                            <div class="extra-options-row" style="display: ${ (forceOpt || waitOpt) ? 'flex' : 'none' }; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.03); padding-top: 4px; align-items: center; justify-content: space-between; gap: 4px;">
+                                 <label class="force-trigger-label" style="display: ${ forceOpt ? 'flex' : 'none' }; align-items: center; gap: 2px; cursor: pointer; user-select: none; font-size: 0.65rem; color: var(--text-secondary);" title="Block automatic propagation to downstream nodes">
+                                     <input type="checkbox" class="force-trigger-toggle" data-node="${n.id}">
+                                     <span>Force Trigger</span>
+                                 </label>
+                                 <label class="wait-complete-label" style="display: ${ waitOpt ? 'flex' : 'none' }; align-items: center; gap: 2px; cursor: pointer; user-select: none; font-size: 0.65rem; color: var(--text-secondary);" title="Skip execution if previous update is still running">
+                                     <input type="checkbox" class="wait-complete-toggle" data-node="${n.id}">
+                                     <span>Wait Complete</span>
+                                 </label>
+                             </div>
                         </div>
                         <div class="node-resize-handle"></div>
                     </div>
@@ -196,6 +305,7 @@ $(function() {
                 nodesLayer.append(nodeEl);
                 setupNodeDragging(nodeEl);
                 setupNodeResizing(nodeEl);
+                nodeResizeObserver.observe(nodeEl[0]);
             }
 
             // Update target node id attribute
@@ -330,6 +440,20 @@ $(function() {
                         .attr('style', 'fill:none;stroke:var(--primary);stroke-width:2');
                     svg.append(polyline);
                 }
+            } else if (n.title === 'Advanced Plot' || n.title === 'Orderbook Plot') {
+                if (nodeEl.find('.node-custom-content').length === 0) {
+                    nodeEl.find('.node-ports').after(`
+                        <div class="node-custom-content" style="padding: 0 10px 10px 10px; display: flex; flex-direction: column; gap: 4px; align-items: center; width: 100%; height: 160px; box-sizing: border-box;">
+                            <div class="custom-svg-container" style="width: 100%; height: 100%; border: 1px solid rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; background: rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center;"></div>
+                        </div>
+                    `);
+                }
+                let container = nodeEl.find('.custom-svg-container');
+                if (n.svg_content) {
+                    container.html(n.svg_content);
+                } else {
+                    container.html('<div style="color: var(--text-muted); font-size: 0.65rem; display: flex; align-items: center; justify-content: center; height: 100%;">No data plotted yet</div>');
+                }
             } else {
                 nodeEl.find('.node-custom-content').remove();
             }
@@ -346,6 +470,9 @@ $(function() {
             if (n.title === 'Plot') {
                 defaultWidth = 220;
                 defaultHeight = 180;
+            } else if (n.title === 'Advanced Plot' || n.title === 'Orderbook Plot') {
+                defaultWidth = 250;
+                defaultHeight = 220;
             } else if (n.title === 'Array Calculator') {
                 defaultWidth = 220;
                 defaultHeight = 140;
@@ -527,22 +654,12 @@ $(function() {
         let ly = parseFloat(handle.attr('data-local-y'));
 
         if (isNaN(lx) || lx === 0 || isNaN(ly) || ly === 0) {
-            let el = handle[0];
-            let x = el.offsetLeft + el.offsetWidth / 2;
-            let y = el.offsetTop + el.offsetHeight / 2;
-
-            let parent = el.offsetParent;
-            while (parent && !parent.classList.contains('node-card')) {
-                x += parent.offsetLeft;
-                y += parent.offsetTop;
-                parent = parent.offsetParent;
+            let coords = computePortLocalCoords(handle);
+            if (coords.x > 0 || coords.y > 0) {
+                handle.attr('data-local-x', coords.x);
+                handle.attr('data-local-y', coords.y);
             }
-
-            if (x > 0 && y > 0) {
-                handle.attr('data-local-x', x);
-                handle.attr('data-local-y', y);
-            }
-            return { x: x || 0, y: y || 0 };
+            return coords;
         }
         return { x: lx, y: ly };
     }
@@ -864,6 +981,35 @@ $(function() {
                 forceTriggerToggle.prop('checked', n.force_trigger || false);
             }
 
+            // Update wait-complete widget
+            let waitCompleteToggle = nodeEl.find('.wait-complete-toggle');
+            if (waitCompleteToggle.length > 0 && !waitCompleteToggle.is(':active')) {
+                waitCompleteToggle.prop('checked', n.wait_until_complete || false);
+            }
+
+            // Toggle visibility of repeat, timer, force trigger, and wait complete options
+            let repOpt = n.repeat_option_visible || false;
+            let timerOpt = n.timer_option_visible || false;
+            let forceOpt = n.force_trigger_visible || false;
+            let waitOpt = n.wait_complete_visible || false;
+
+            let timerWrapper = nodeEl.find('.node-timer-wrapper');
+            let timerRow = nodeEl.find('.timer-row');
+            let timerToggleLabel = nodeEl.find('.timer-toggle-label');
+            let timerIntervalWrapper = nodeEl.find('.timer-interval-wrapper');
+            let extraOptionsRow = nodeEl.find('.extra-options-row');
+            let forceLabel = nodeEl.find('.force-trigger-label');
+            let waitLabel = nodeEl.find('.wait-complete-label');
+
+            timerToggleLabel.css('display', repOpt ? 'flex' : 'none');
+            timerIntervalWrapper.css('display', timerOpt ? 'flex' : 'none');
+            timerRow.css('display', (repOpt || timerOpt) ? 'flex' : 'none');
+            
+            forceLabel.css('display', forceOpt ? 'flex' : 'none');
+            waitLabel.css('display', waitOpt ? 'flex' : 'none');
+            extraOptionsRow.css('display', (forceOpt || waitOpt) ? 'flex' : 'none');
+            timerWrapper.css('display', (repOpt || timerOpt || forceOpt || waitOpt) ? 'block' : 'none');
+
             // Update Plot SVG if Plot Node
             if (n.title === 'Plot') {
                 let svg = nodeEl.find('.plot-svg');
@@ -891,6 +1037,15 @@ $(function() {
                             .attr('points', points.join(' '))
                             .attr('style', 'fill:none;stroke:var(--primary);stroke-width:2');
                         svg.append(polyline);
+                    }
+                }
+            } else if (n.title === 'Advanced Plot' || n.title === 'Orderbook Plot') {
+                let container = nodeEl.find('.custom-svg-container');
+                if (container.length > 0) {
+                    if (n.svg_content) {
+                        container.html(n.svg_content);
+                    } else {
+                        container.html('<div style="color: var(--text-muted); font-size: 0.65rem; display: flex; align-items: center; justify-content: center; height: 100%;">No data plotted yet</div>');
                     }
                 }
             }
@@ -977,11 +1132,160 @@ $(function() {
             }, 10);
         });
 
+        let activeNodeRadialId = null;
+
+        function hideNodeRadialMenu() {
+            let menu = $('#node-radial-menu');
+            menu.removeClass('active');
+            setTimeout(() => {
+                if (!menu.hasClass('active')) {
+                    menu.css('display', 'none');
+                }
+            }, 200);
+        }
+
+        // Right-click node card to trigger Node Radial Menu
+        $(document).on('contextmenu', '.node-card', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            hideRadialMenu();
+            hideRadialSearch();
+            hideNodeRadialMenu();
+
+            let nodeId = $(this).attr('data-id');
+            activeNodeRadialId = nodeId;
+
+            // Check visibility states to change action text
+            let nodeEl = $(`.node-card[data-id="${nodeId}"]`);
+            let hasRepeat = nodeEl.find('.timer-toggle-label').css('display') !== 'none';
+            let hasTimer = nodeEl.find('.timer-interval-wrapper').css('display') !== 'none';
+            let hasForce = nodeEl.find('.force-trigger-label').css('display') !== 'none';
+            let hasWait = nodeEl.find('.wait-complete-label').css('display') !== 'none';
+
+            $('#node-radial-repeat-label').text(hasRepeat ? 'Remove Repeat' : 'Add Repeat');
+            $('#node-radial-timer-label').text(hasTimer ? 'Remove Timer' : 'Add Timer');
+            $('#node-radial-force-label').text(hasForce ? 'Remove Force' : 'Add Force');
+            $('#node-radial-wait-label').text(hasWait ? 'Remove Wait' : 'Add Wait Complete');
+
+            let pageX = e.pageX;
+            let pageY = e.pageY;
+
+            let menu = $('#node-radial-menu');
+            menu.css({
+                left: pageX + 'px',
+                top: pageY + 'px',
+                display: 'block'
+            });
+            
+            setTimeout(() => {
+                menu.addClass('active');
+            }, 10);
+        });
+
         // Hide menus on click anywhere outside
         $(document).on('mousedown', function(e) {
-            if ($(e.target).closest('#radial-menu, #radial-search-popup').length === 0) {
+            if ($(e.target).closest('#radial-menu, #radial-search-popup, #node-radial-menu').length === 0) {
                 hideRadialMenu();
                 hideRadialSearch();
+                hideNodeRadialMenu();
+            }
+        });
+
+        // Click on node radial menu item
+        $(document).on('click', '#node-radial-menu .radial-menu-item', function(e) {
+            e.stopPropagation();
+            let action = $(this).attr('data-action');
+            hideNodeRadialMenu();
+
+            if (!activeNodeRadialId) return;
+
+            let nodeId = activeNodeRadialId;
+            let nodeEl = $(`.node-card[data-id="${nodeId}"]`);
+
+            if (action === 'toggle-repeat') {
+                let hasRepeat = nodeEl.find('.timer-toggle-label').css('display') !== 'none';
+                let nextVal = !hasRepeat;
+                
+                if (!nextVal) {
+                    $.ajax({
+                        url: '/api/update_node_property',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ node_id: nodeId, name: 'loop_enabled', val: false })
+                    });
+                }
+                
+                $.ajax({
+                    url: '/api/update_node_property',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ node_id: nodeId, name: 'repeat_option_visible', val: nextVal }),
+                    success: function() {
+                        loadFlow();
+                        addLog(`Repeat option ${nextVal ? 'added to' : 'removed from'} Node ${nodeId}`);
+                    }
+                });
+            } else if (action === 'toggle-timer') {
+                let hasTimer = nodeEl.find('.timer-interval-wrapper').css('display') !== 'none';
+                let nextVal = !hasTimer;
+                
+                $.ajax({
+                    url: '/api/update_node_property',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ node_id: nodeId, name: 'timer_option_visible', val: nextVal }),
+                    success: function() {
+                        loadFlow();
+                        addLog(`Timer option ${nextVal ? 'added to' : 'removed from'} Node ${nodeId}`);
+                    }
+                });
+            } else if (action === 'toggle-force') {
+                let hasForce = nodeEl.find('.force-trigger-label').css('display') !== 'none';
+                let nextVal = !hasForce;
+                
+                if (!nextVal) {
+                    $.ajax({
+                        url: '/api/update_node_property',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ node_id: nodeId, name: 'force_trigger', val: false })
+                    });
+                }
+
+                $.ajax({
+                    url: '/api/update_node_property',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ node_id: nodeId, name: 'force_trigger_visible', val: nextVal }),
+                    success: function() {
+                        loadFlow();
+                        addLog(`Force Trigger option ${nextVal ? 'added to' : 'removed from'} Node ${nodeId}`);
+                    }
+                });
+            } else if (action === 'toggle-wait') {
+                let hasWait = nodeEl.find('.wait-complete-label').css('display') !== 'none';
+                let nextVal = !hasWait;
+                
+                if (!nextVal) {
+                    $.ajax({
+                        url: '/api/update_node_property',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ node_id: nodeId, name: 'wait_until_complete', val: false })
+                    });
+                }
+
+                $.ajax({
+                    url: '/api/update_node_property',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ node_id: nodeId, name: 'wait_complete_visible', val: nextVal }),
+                    success: function() {
+                        loadFlow();
+                        addLog(`Wait Complete option ${nextVal ? 'added to' : 'removed from'} Node ${nodeId}`);
+                    }
+                });
             }
         });
 
@@ -989,6 +1293,7 @@ $(function() {
         $(document).on('click', '.radial-menu-item', function(e) {
             e.stopPropagation();
             let action = $(this).attr('data-action');
+            if (action.startsWith('toggle-')) return; // handled by node radial click
             hideRadialMenu();
 
             if (action === 'add-node') {
@@ -1137,9 +1442,19 @@ $(function() {
             }
         });
 
-        // Toolbar Button handlers
+        // Modal close/cancel handler
+        $('.modal-cancel').on('click', function() {
+            $('.modal-overlay').fadeOut(200);
+        });
+
         $('#btn-save').on('click', function() {
-            let name = prompt("Enter flow name to save:", currentFlowName);
+            $('#save-flow-name').val(currentFlowName);
+            $('#save-flow-modal').css('display', 'flex').hide().fadeIn(200);
+            $('#save-flow-name').focus().select();
+        });
+
+        $('#btn-confirm-save').on('click', function() {
+            let name = $('#save-flow-name').val().trim();
             if (name) {
                 $.ajax({
                     url: '/api/save',
@@ -1148,33 +1463,65 @@ $(function() {
                     data: JSON.stringify({ name: name }),
                     success: function(res) {
                         currentFlowName = res.name;
-                        alert(`Project saved successfully as "${res.name}"`);
+                        $('#save-flow-modal').fadeOut(200);
+                        addLog(`Project saved successfully as "${res.name}"`);
+                    },
+                    error: function(err) {
+                        alert('Failed to save flow: ' + (err.responseJSON ? err.responseJSON.message : 'Unknown'));
                     }
                 });
+            }
+        });
+
+        $('#save-flow-name').on('keypress', function(e) {
+            if (e.which === 13) {
+                $('#btn-confirm-save').click();
             }
         });
 
         $('#btn-load').on('click', function() {
             $.getJSON('/api/list_flows', function(res) {
                 let flows = res.flows || [];
-                let msg = "Available saved flows:\n" + flows.map(f => ` - ${f}`).join('\n') + "\n\nEnter name of flow to load:";
-                let name = prompt(msg, currentFlowName);
-                if (name) {
-                    $.ajax({
-                        url: '/api/load',
-                        method: 'POST',
-                        contentType: 'application/json',
-                        data: JSON.stringify({ name: name }),
-                        success: function(loadRes) {
-                            currentFlowName = loadRes.name;
-                            loadFlow();
-                            addLog(`Loaded saved project flow: ${loadRes.name}`);
-                        },
-                        error: function(err) {
-                            alert('Failed to load flow: ' + (err.responseJSON ? err.responseJSON.message : 'Unknown'));
-                        }
+                let listContainer = $('#load-flow-list').empty();
+                
+                if (flows.length === 0) {
+                    listContainer.html('<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 20px;">No saved flows found.</div>');
+                } else {
+                    flows.forEach(f => {
+                        let isCurrent = (f === currentFlowName);
+                        let itemHtml = `
+                            <div class="flow-list-item" data-name="${f}">
+                                <div class="flow-item-info">
+                                    <span class="material-icons-round flow-item-icon">${isCurrent ? 'stars' : 'article'}</span>
+                                    <span class="flow-item-name">${f} ${isCurrent ? '<span style="color: var(--primary); font-size: 0.75rem; font-weight: 600; margin-left: 4px;">(active)</span>' : ''}</span>
+                                </div>
+                                <button class="flow-item-action">Load</button>
+                            </div>
+                        `;
+                        let item = $(itemHtml);
+                        item.on('click', function() {
+                            let flowName = $(this).attr('data-name');
+                            $.ajax({
+                                url: '/api/load',
+                                method: 'POST',
+                                contentType: 'application/json',
+                                data: JSON.stringify({ name: flowName }),
+                                success: function(loadRes) {
+                                    currentFlowName = loadRes.name;
+                                    loadFlow();
+                                    $('#load-flow-modal').fadeOut(200);
+                                    addLog(`Loaded saved project flow: ${loadRes.name}`);
+                                },
+                                error: function(err) {
+                                    alert('Failed to load flow: ' + (err.responseJSON ? err.responseJSON.message : 'Unknown'));
+                                }
+                            });
+                        });
+                        listContainer.append(item);
                     });
                 }
+                
+                $('#load-flow-modal').css('display', 'flex').hide().fadeIn(200);
             });
         });
 
@@ -1202,19 +1549,103 @@ $(function() {
             });
         });
 
+        $('#btn-pause-view').on('click', function() {
+            viewUpdatesPaused = !viewUpdatesPaused;
+            let btn = $(this);
+            if (viewUpdatesPaused) {
+                btn.removeClass('btn-secondary').addClass('btn-warning')
+                   .html('<span class="material-icons-round">visibility_off</span> Resume View')
+                   .attr('title', 'Resume canvas node updates');
+                addLog('[Studio UI]: Canvas node view updates paused');
+            } else {
+                btn.removeClass('btn-warning').addClass('btn-secondary')
+                   .html('<span class="material-icons-round">visibility</span> Pause View')
+                   .attr('title', 'Pause canvas node updates (background execution continues)');
+                addLog('[Studio UI]: Canvas node view updates resumed');
+                pollFlowUpdates();
+            }
+        });
+
         $('#btn-run').on('click', function() {
-            // Trigger update on NumberNodes to flow through
-            $('.node-card[data-category="String"], .node-card[data-category="Math"]').each(function() {
-                let id = $(this).attr('data-id');
+            let mode = $('#alg-mode-select').val();
+            let recompileBadgeVisible = $('#recompile-badge').is(':visible');
+            
+            function triggerExecution() {
+                $('.node-card').each(function() {
+                    let card = $(this);
+                    let title = card.find('.node-title').text();
+                    let category = card.attr('data-category');
+                    if (title === 'Trigger' || ['String', 'Math'].includes(category)) {
+                        let id = card.attr('data-id');
+                        $.ajax({
+                            url: '/api/trigger_node',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({ node_id: id })
+                        });
+                    }
+                });
+                setTimeout(loadFlow, 250);
+                addLog('Manually triggered flow execution');
+            }
+
+            if (mode === 'compiled' && recompileBadgeVisible) {
+                addLog('[Warning]: Flow has modified nodes. Auto-recompiling before running...');
                 $.ajax({
-                    url: '/api/trigger_node',
+                    url: '/api/compile',
                     method: 'POST',
                     contentType: 'application/json',
-                    data: JSON.stringify({ node_id: id })
+                    data: JSON.stringify({}),
+                    success: function(res) {
+                        if (res.status === 'success') {
+                            addLog('[Studio UI]: Auto-recompilation successful.');
+                            triggerExecution();
+                        } else {
+                            alert('Auto-recompilation failed: ' + res.message);
+                        }
+                    },
+                    error: function(err) {
+                        alert('Auto-recompilation request failed: ' + (err.responseJSON ? err.responseJSON.message : 'Unknown'));
+                    }
                 });
+            } else {
+                triggerExecution();
+            }
+        });
+
+        $('#btn-compile').on('click', function() {
+            addLog('[Studio UI]: Compiling flow into a standalone Python file...');
+            $.ajax({
+                url: '/api/compile',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({}),
+                success: function(res) {
+                    if (res.status === 'success') {
+                        loadFlow();
+                        addLog('[Studio UI]: Flow successfully compiled on backend: ' + res.filename);
+                    } else {
+                        alert('Compilation failed: ' + res.message);
+                    }
+                },
+                error: function(err) {
+                    alert('Compilation request failed: ' + (err.responseJSON ? err.responseJSON.message : 'Unknown'));
+                }
             });
-            setTimeout(loadFlow, 200);
-            addLog('Manually triggered flow execution');
+        });
+
+        $('#compiled-file-select').on('change', function() {
+            let filename = $(this).val();
+            $.ajax({
+                url: '/api/set_compiled_file',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ filename }),
+                success: function() {
+                    loadFlow();
+                    addLog(`Switched active compiled file to: ${filename}`);
+                }
+            });
         });
 
         $('#alg-mode-select').on('change', function() {
@@ -1227,18 +1658,23 @@ $(function() {
                 success: function() {
                     loadFlow();
                     addLog(`Switched execution mode to: ${mode}`);
+                },
+                error: function(err) {
+                    let errMsg = err.responseJSON ? err.responseJSON.message : 'Failed to set algorithm mode';
+                    alert(errMsg);
+                    loadFlow();
                 }
             });
         });
 
         // Info Modal toggle handlers
         $('#btn-mode-info').on('click', function() {
-            $('#mode-info-modal').fadeIn(200);
+            $('#mode-info-modal').css('display', 'flex').hide().fadeIn(200);
         });
 
-        $('#btn-close-modal, .modal-overlay').on('click', function(e) {
-            if (e.target === this || $(e.target).closest('#btn-close-modal').length > 0) {
-                $('#mode-info-modal').fadeOut(200);
+        $(document).on('click', '.modal-overlay', function(e) {
+            if (e.target === this || $(e.target).closest('.modal-close').length > 0) {
+                $(this).fadeOut(200);
             }
         });
 
@@ -1467,6 +1903,27 @@ $(function() {
             });
         });
 
+        // Wait-complete toggle checkbox handler
+        $(document).on('change', '.wait-complete-toggle', function() {
+            let nodeId = $(this).attr('data-node');
+            let enabled = $(this).is(':checked');
+
+            $.ajax({
+                url: '/api/update_node_property',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    node_id: nodeId,
+                    name: 'wait_until_complete',
+                    val: enabled
+                }),
+                success: function() {
+                    loadFlow();
+                    addLog(`Toggled wait-complete for Node ${nodeId}: ${enabled ? 'Enabled' : 'Disabled'}`);
+                }
+            });
+        });
+
         // Trigger action button click event handler for ExecuteButtonNode
         $(document).on('click', '.btn-trigger-action', function(e) {
             e.stopPropagation();
@@ -1645,11 +2102,19 @@ $(function() {
 
         // Search Bar filter
         $('#node-search').on('input', function() {
-            let query = $(this).val().toLowerCase();
+            let query = $(this).val().toLowerCase().trim();
             
             $('.node-item').each(function() {
-                let name = $(this).text().toLowerCase();
-                if (name.includes(query)) {
+                let title = $(this).find('.node-item-main span').text().toLowerCase();
+                let matchesTitle = title.includes(query);
+                let matchesTag = false;
+                $(this).find('.node-tag').each(function() {
+                    if ($(this).text().toLowerCase().includes(query)) {
+                        matchesTag = true;
+                    }
+                });
+                
+                if (!query || matchesTitle || matchesTag) {
                     $(this).show();
                 } else {
                     $(this).hide();
@@ -1665,6 +2130,13 @@ $(function() {
                     $(this).show();
                 }
             });
+        });
+
+        // Click tag to search
+        $(document).on('click', '.node-tag', function(e) {
+            e.stopPropagation();
+            let tag = $(this).attr('data-tag');
+            $('#node-search').val(tag).trigger('input');
         });
     }
 
@@ -1684,6 +2156,7 @@ $(function() {
     // Load logs list from server
     let lastLogHash = "";
     function loadLogs() {
+        if (viewUpdatesPaused) return;
         $.getJSON('/api/logs', function(logs) {
             if (logs.length === 0) {
                 if (lastLogHash !== "") {
@@ -1743,6 +2216,10 @@ $(function() {
     // Wrap the pollFlowUpdates call to support adaptive delay based on active loops
     let originalPollFlowUpdates = pollFlowUpdates;
     pollFlowUpdates = function() {
+        if (viewUpdatesPaused) {
+            scheduleNextPoll(1000); // retry later
+            return;
+        }
         if ($('.port-inline-input:focus').length > 0 || $('.port-label-input:focus').length > 0) {
             scheduleNextPoll(1000); // retry later
             return;

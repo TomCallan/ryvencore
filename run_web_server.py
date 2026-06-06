@@ -22,6 +22,36 @@ from nodes.base import WebNode
 
 NODE_CLASSES = []
 
+NODE_TAGS = {
+    'Add': ['math', 'operation', 'arithmetic', 'sum', 'plus'],
+    'Subtract': ['math', 'operation', 'arithmetic', 'difference', 'minus'],
+    'Multiply': ['math', 'operation', 'arithmetic', 'product', 'times'],
+    'Divide': ['math', 'operation', 'arithmetic', 'quotient', 'ratio'],
+    'Number': ['math', 'input', 'constant', 'float', 'integer', 'value'],
+    'String': ['text', 'input', 'constant', 'string', 'value'],
+    'Concat': ['text', 'operation', 'combine', 'concatenate', 'join'],
+    'Uppercase': ['text', 'operation', 'uppercase', 'transform'],
+    'Compare': ['logic', 'comparison', 'equals', 'greater', 'less'],
+    'If/Else': ['logic', 'conditional', 'branching', 'control'],
+    'Random': ['utility', 'random', 'number', 'noise'],
+    'Log': ['utility', 'logging', 'print', 'output', 'debug'],
+    'Trigger': ['exec', 'control', 'trigger', 'event'],
+    'Branch': ['exec', 'control', 'conditional', 'branch'],
+    'Counter': ['exec', 'control', 'counter', 'loop'],
+    'Execute Button': ['exec', 'trigger', 'manual', 'button'],
+    'Python REPL': ['logic', 'scripting', 'python', 'execution', 'interactive'],
+    'Python Script': ['logic', 'scripting', 'python', 'execution', 'file'],
+    'Plot': ['visualization', 'plotting', 'chart', 'graph'],
+    'Array Calculator': ['math', 'array', 'vector', 'list', 'calculation'],
+    'Execution Timer': ['utility', 'timer', 'performance', 'benchmark'],
+    'Lazy File Reader': ['data source', 'file', 'stream', 'parquet', 'csv', 'polars'],
+    'CSV Parser': ['data source', 'file', 'csv', 'parser'],
+    'Parquet Reader': ['data source', 'file', 'parquet', 'polars', 'duckdb'],
+    'DuckDB Query': ['data source', 'database', 'sql', 'query', 'duckdb'],
+    'Advanced Plot': ['visualization', 'plotting', 'chart', 'line', 'polars'],
+    'Orderbook Plot': ['visualization', 'plotting', 'chart', 'orderbook', 'depth']
+}
+
 def load_nodes_from_folder():
     global NODE_CLASSES
     NODE_CLASSES = []
@@ -97,6 +127,38 @@ def get_trigger_input_index(node, flow, downstream_set, start_node):
     return -1
 
 
+def serialize_payload(val):
+    if val is None:
+        return None
+    if hasattr(val, 'payload'):
+        return val.payload
+    return val
+
+flow_updates = []
+
+def on_output_changed(port):
+    try:
+        idx = port.node.outputs.index(port)
+    except ValueError:
+        idx = -1
+    
+    val_serialized = serialize_payload(port.val)
+    
+    flow_updates.append({
+        'node_id': port.node.global_id,
+        'output_index': idx,
+        'val': val_serialized
+    })
+    
+    if len(flow_updates) > 10000:
+        flow_updates.pop(0)
+
+def set_current_flow(new_flow):
+    global flow
+    flow = new_flow
+    flow.output_changed.sub(on_output_changed)
+    flow_updates.clear()
+
 # Instantiate Session
 session = rc.Session()
 
@@ -107,7 +169,7 @@ session.register_node_types(NODE_CLASSES)
 # Import classes for default flow setup
 from basic_nodes import NumberNode, AddNode, LogNode
 
-flow = session.create_flow('main')
+set_current_flow(session.create_flow('main'))
 
 # Setup default nodes for representation
 n_num1 = flow.create_node(NumberNode)
@@ -132,12 +194,6 @@ flow.connect_nodes(n_add.outputs[0], n_log.inputs[0])
 n_num1.update()
 n_num2.update()
 
-def serialize_payload(val):
-    if val is None:
-        return None
-    if hasattr(val, 'payload'):
-        return val.payload
-    return val
 
 def get_input_val(node, index):
     inp = node.inputs[index]
@@ -146,6 +202,64 @@ def get_input_val(node, index):
         return conn_out.val
     else:
         return inp.default
+
+def get_compiled_files(flow):
+    import os
+    compiled_dir = os.path.abspath('compiled')
+    if not os.path.exists(compiled_dir):
+        return []
+    flow_title_safe = "".join(c for c in flow.title if c.isalnum() or c == '_')
+    if not flow_title_safe:
+        flow_title_safe = "flow"
+    
+    files = []
+    for f in os.listdir(compiled_dir):
+        if f.endswith('.py') and (f == f"{flow_title_safe}_compiled.py" or (f.startswith(flow_title_safe + "_") and len(f) > len(flow_title_safe) + 4)):
+            files.append(f)
+            
+    files.sort(key=lambda x: os.path.getmtime(os.path.join(compiled_dir, x)), reverse=True)
+    return files
+
+def check_compiled_status(flow):
+    import os
+    compiled_dir = os.path.abspath('compiled')
+    compiled_files = get_compiled_files(flow)
+    if not compiled_files:
+        return {
+            'compiled_exists': False,
+            'compiled_dirty': True,
+            'active_compiled_file': None,
+            'compiled_files': []
+        }
+        
+    active_file = getattr(flow, 'active_compiled_file', None)
+    if not active_file or active_file not in compiled_files:
+        active_file = compiled_files[0]
+        flow.active_compiled_file = active_file
+        
+    filepath = os.path.join(compiled_dir, active_file)
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            first_line = f.readline().strip()
+        if first_line.startswith("# Structure Hash: "):
+            compiled_hash = first_line.split("# Structure Hash: ")[1].strip()
+            current_hash = rc.FlowCompiler.get_structure_hash(flow)
+            if compiled_hash == current_hash:
+                return {
+                    'compiled_exists': True,
+                    'compiled_dirty': False,
+                    'active_compiled_file': active_file,
+                    'compiled_files': compiled_files
+                }
+    except Exception as e:
+        print(f"Error checking compiled status: {e}")
+        
+    return {
+        'compiled_exists': True,
+        'compiled_dirty': True,
+        'active_compiled_file': active_file,
+        'compiled_files': compiled_files
+    }
 
 def get_flow_state():
     nodes_data = []
@@ -164,7 +278,7 @@ def get_flow_state():
                 'type': out.type_,
                 'val': serialize_payload(out.val)
             })
-        nodes_data.append({
+        node_info = {
             'id': n.global_id,
             'identifier': n.identifier,
             'title': n.title,
@@ -176,13 +290,21 @@ def get_flow_state():
             'loop_interval': getattr(n, 'loop_interval', 1.0),
             'auto_exec_downstream': getattr(n, 'auto_exec_downstream', False),
             'force_trigger': getattr(n, 'force_trigger', False),
+            'wait_until_complete': getattr(n, 'wait_until_complete', False),
+            'repeat_option_visible': getattr(n, 'repeat_option_visible', False),
+            'timer_option_visible': getattr(n, 'timer_option_visible', False),
+            'force_trigger_visible': getattr(n, 'force_trigger_visible', False),
+            'wait_complete_visible': getattr(n, 'wait_complete_visible', False),
             'target_node_id': getattr(n, 'target_node_id', None),
             'code': getattr(n, 'code', None),
             'script_path': getattr(n, 'script_path', None),
             'buffer': getattr(n, 'buffer', None),
             'inputs': inputs_data,
             'outputs': outputs_data
-        })
+        }
+        if hasattr(n, 'additional_data'):
+            node_info.update(n.additional_data())
+        nodes_data.append(node_info)
     
     connections_data = []
     for n in flow.nodes:
@@ -195,11 +317,17 @@ def get_flow_state():
                     'input_index': inp.node.inputs.index(inp)
                 })
 
+    status_info = check_compiled_status(flow)
     return {
         'algorithm_mode': flow.algorithm_mode(),
         'execution_paused': nb.global_execution_paused,
         'nodes': nodes_data,
-        'connections': connections_data
+        'connections': connections_data,
+        'compiled_exists': status_info['compiled_exists'],
+        'compiled_dirty': status_info['compiled_dirty'],
+        'active_compiled_file': status_info['active_compiled_file'],
+        'compiled_files': status_info['compiled_files'],
+        'current_update_index': len(flow_updates)
     }
 
 class APIRequestHandler(BaseHTTPRequestHandler):
@@ -224,15 +352,28 @@ class APIRequestHandler(BaseHTTPRequestHandler):
             for nc in NODE_CLASSES:
                 # build identifier for template details
                 nc._build_identifier()
+                tags = NODE_TAGS.get(nc.title, ['utility'])
                 nodes_templates.append({
                     'identifier': nc.identifier,
                     'title': nc.title,
                     'inputs': [{'label': i.label, 'type': i.type_} for i in nc.init_inputs],
-                    'outputs': [{'label': o.label, 'type': o.type_} for o in nc.init_outputs]
+                    'outputs': [{'label': o.label, 'type': o.type_} for o in nc.init_outputs],
+                    'tags': tags
                 })
             self.send_json_response(nodes_templates)
         elif path == '/api/flow':
             self.send_json_response(get_flow_state())
+        elif path == '/api/flow_updates':
+            query = urllib.parse.parse_qs(parsed_path.query)
+            try:
+                index = int(query.get('index', [0])[0])
+            except ValueError:
+                index = 0
+            self.send_json_response({
+                'status': 'success',
+                'updates': flow_updates[index:],
+                'current_index': len(flow_updates)
+            })
         elif path == '/api/logs':
             self.send_json_response(nb.log_messages)
         elif path == '/api/list_flows':
@@ -292,7 +433,8 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                     n = flow.create_node(node_class)
                     n.x = x
                     n.y = y
-                    n.update()
+                    if flow.algorithm_mode() != 'compiled':
+                        n.update()
                     self.send_json_response({'status': 'success', 'node': {'id': n.global_id}})
                 else:
                     self.send_error_response('Node class not found')
@@ -352,7 +494,8 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                     res = flow.connect_nodes(out, inp)
                     if res:
                         # Trigger updates
-                        parent_node.update()
+                        if flow.algorithm_mode() != 'compiled':
+                            parent_node.update()
                         self.send_json_response({'status': 'success', 'flow': get_flow_state()})
                     else:
                         self.send_error_response('Connection invalid')
@@ -373,8 +516,9 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                     inp = connected_node.inputs[i_idx]
                     flow.disconnect_nodes(out, inp)
                     # Trigger updates
-                    parent_node.update()
-                    connected_node.update()
+                    if flow.algorithm_mode() != 'compiled':
+                        parent_node.update()
+                        connected_node.update()
                     self.send_json_response({'status': 'success', 'flow': get_flow_state()})
                 else:
                     self.send_error_response('Nodes not found')
@@ -397,7 +541,8 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                         pass # keep as string or whatever type was entered
                     
                     inp.default = rc.Data(val)
-                    n.update(i_idx)
+                    if flow.algorithm_mode() != 'compiled':
+                        n.update(i_idx)
                     self.send_json_response({'status': 'success', 'flow': get_flow_state()})
                 else:
                     self.send_error_response('Node not found')
@@ -434,7 +579,8 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                         else:
                             n.stop_loop()
                             
-                    n.update()
+                    if flow.algorithm_mode() != 'compiled':
+                        n.update()
                     self.send_json_response({'status': 'success', 'flow': get_flow_state()})
                 else:
                     self.send_error_response('Node not found')
@@ -454,6 +600,11 @@ class APIRequestHandler(BaseHTTPRequestHandler):
 
             elif path == '/api/set_alg_mode':
                 mode = req.get('mode')
+                if mode == 'compiled':
+                    compiled_files = get_compiled_files(flow)
+                    if not compiled_files:
+                        self.send_error_response('No compiled files exist. Please compile the workflow first.')
+                        return
                 if flow.set_algorithm_mode(mode):
                     self.send_json_response({'status': 'success', 'flow': get_flow_state()})
                 else:
@@ -471,7 +622,7 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                     if hasattr(n, 'stop_loop'):
                         n.stop_loop()
                 session.delete_flow(flow)
-                flow = session.create_flow(title)
+                set_current_flow(session.create_flow(title))
                 nb.global_execution_paused = False
                 self.send_json_response({'status': 'success', 'flow': get_flow_state()})
 
@@ -525,7 +676,7 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                     session.register_node_types(NODE_CLASSES)
                     flows = session.load(data)
                     if flows:
-                        flow = flows[0]
+                        set_current_flow(flows[0])
                     nb.global_execution_paused = False
                     self.send_json_response({'status': 'success', 'flow': get_flow_state(), 'name': name})
                 else:
@@ -541,6 +692,69 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                 nb.log_messages.clear()
                 self.send_json_response({'status': 'success'})
 
+            elif path == '/api/compile':
+                try:
+                    import tempfile
+                    import subprocess
+                    import sys
+                    
+                    compiled_dir = os.path.abspath('compiled')
+                    os.makedirs(compiled_dir, exist_ok=True)
+                    
+                    # Serialize the session flow data to pass to script
+                    data = session.serialize()
+                    with tempfile.NamedTemporaryFile(suffix='.json', dir=compiled_dir, delete=False, mode='w', encoding='utf-8') as temp_f:
+                        json.dump(data, temp_f, indent=4)
+                        temp_path = temp_f.name
+                        
+                    script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'compile_workflow.py')
+                    
+                    result = subprocess.run(
+                        [sys.executable, script_path, temp_path, compiled_dir],
+                        capture_output=True,
+                        text=True,
+                        check=False
+                    )
+                    
+                    # Clean up
+                    try:
+                        os.remove(temp_path)
+                    except:
+                        pass
+                        
+                    if result.returncode == 0 and "SUCCESS:" in result.stdout:
+                        filename = ""
+                        for line in result.stdout.splitlines():
+                            if line.startswith("SUCCESS:"):
+                                filename = line.split("SUCCESS:")[1].strip()
+                                break
+                        
+                        flow.active_compiled_file = filename
+                        if flow.algorithm_mode() == 'compiled':
+                            flow.executor.flow_changed = True
+                            
+                        self.send_json_response({
+                            'status': 'success',
+                            'filename': filename,
+                            'flow': get_flow_state()
+                        })
+                    else:
+                        error_msg = result.stderr or result.stdout or "Unknown error"
+                        self.send_error_response(f"Compilation failed: {error_msg}")
+                except Exception as e:
+                    self.send_error_response(f"Compilation failed: {e}")
+
+            elif path == '/api/set_compiled_file':
+                filename = req.get('filename')
+                compiled_files = get_compiled_files(flow)
+                if filename in compiled_files:
+                    flow.active_compiled_file = filename
+                    if flow.algorithm_mode() == 'compiled':
+                        flow.executor.flow_changed = True
+                    self.send_json_response({'status': 'success', 'flow': get_flow_state()})
+                else:
+                    self.send_error_response('Compiled file not found')
+
             elif path == '/api/add_port':
                 node_id = int(req.get('node_id'))
                 direction = req.get('direction')
@@ -552,7 +766,8 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                     elif direction == 'output':
                         label = f"out{len(n.outputs) + 1}"
                         n.create_output(label=label)
-                    n.update()
+                    if flow.algorithm_mode() != 'compiled':
+                        n.update()
                     self.send_json_response({'status': 'success', 'flow': get_flow_state()})
                 else:
                     self.send_error_response('Node not found')
@@ -567,7 +782,8 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                         n.delete_input(index)
                     elif direction == 'output':
                         n.delete_output(index)
-                    n.update()
+                    if flow.algorithm_mode() != 'compiled':
+                        n.update()
                     self.send_json_response({'status': 'success', 'flow': get_flow_state()})
                 else:
                     self.send_error_response('Node not found')
@@ -583,7 +799,8 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                         n.rename_input(index, label)
                     elif direction == 'output':
                         n.rename_output(index, label)
-                    n.update()
+                    if flow.algorithm_mode() != 'compiled':
+                        n.update()
                     self.send_json_response({'status': 'success', 'flow': get_flow_state()})
                 else:
                     self.send_error_response('Node not found')

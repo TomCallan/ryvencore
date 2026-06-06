@@ -85,6 +85,12 @@ class WebNode(rc.Node):
         self.loop_interval = 1.0
         self.auto_exec_downstream = False
         self.force_trigger = False
+        self.wait_until_complete = False
+        self.repeat_option_visible = False
+        self.timer_option_visible = False
+        self.force_trigger_visible = False
+        self.wait_complete_visible = False
+        self._is_executing = False
         self._loop_thread = None
         self._loop_running = False
 
@@ -97,7 +103,12 @@ class WebNode(rc.Node):
             'loop_enabled': self.loop_enabled,
             'loop_interval': self.loop_interval,
             'auto_exec_downstream': self.auto_exec_downstream,
-            'force_trigger': self.force_trigger
+            'force_trigger': self.force_trigger,
+            'wait_until_complete': self.wait_until_complete,
+            'repeat_option_visible': self.repeat_option_visible,
+            'timer_option_visible': self.timer_option_visible,
+            'force_trigger_visible': self.force_trigger_visible,
+            'wait_complete_visible': self.wait_complete_visible
         }
 
     def load_additional_data(self, data):
@@ -109,6 +120,11 @@ class WebNode(rc.Node):
         self.loop_interval = data.get('loop_interval', 1.0)
         self.auto_exec_downstream = data.get('auto_exec_downstream', False)
         self.force_trigger = data.get('force_trigger', False)
+        self.wait_until_complete = data.get('wait_until_complete', False)
+        self.repeat_option_visible = data.get('repeat_option_visible', self.loop_enabled)
+        self.timer_option_visible = data.get('timer_option_visible', self.loop_enabled)
+        self.force_trigger_visible = data.get('force_trigger_visible', self.force_trigger)
+        self.wait_complete_visible = data.get('wait_complete_visible', self.wait_until_complete)
         if self.loop_enabled:
             self.start_loop()
 
@@ -145,6 +161,16 @@ class WebNode(rc.Node):
         if global_execution_paused:
             return
 
+        if getattr(self, 'wait_until_complete', False) and getattr(self, '_is_executing', False):
+            return
+
+        self._is_executing = True
+        try:
+            self._real_update(inp)
+        finally:
+            self._is_executing = False
+
+    def _real_update(self, inp=-1):
         # Before running update_event, populate Inputs if class declaration exists
         if hasattr(self.__class__, 'Inputs') and isinstance(self.__class__.Inputs, type):
             inputs_instance = self.__class__.Inputs()

@@ -61,12 +61,14 @@ class NodeInput(NodePort):
 class NodeOutput(NodePort):
     def __init__(self, node: Node, type_: str, label_str: str = ''):
         super().__init__(node, PortObjPos.OUTPUT, type_, label_str)
+        self._val: Optional[Data] = None
 
-        self.val: Optional[Data] = None
+    @property
+    def val(self) -> Optional[Data]:
+        return self._val
 
-    # def data(self) -> dict:
-    #     data = super().data()
-    #
-    #     data['val'] = self.val if self.val is None else self.val.get_data()
-    #
-    #     return data
+    @val.setter
+    def val(self, new_val: Optional[Data]):
+        self._val = new_val
+        if hasattr(self.node, 'flow') and self.node.flow:
+            self.node.flow.output_changed.emit(self)

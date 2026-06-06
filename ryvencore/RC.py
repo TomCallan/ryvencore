@@ -9,6 +9,7 @@ class FlowAlg(IntEnum):
     DATA = 1
     EXEC = 2
     DATA_OPT = 3
+    COMPILED = 4
 
     @staticmethod
     def str(mode):
@@ -18,8 +19,12 @@ class FlowAlg(IntEnum):
             return 'data'
         elif mode == FlowAlg.EXEC:
             return 'exec'
-        else:  # FlowAlg.DATA_OPT
+        elif mode == FlowAlg.DATA_OPT:
             return 'data opt'
+        elif mode == FlowAlg.COMPILED:
+            return 'compiled'
+        else:
+            raise ValueError(f'Invalid mode: {mode}')
 
     @staticmethod
     def from_str(mode):
@@ -29,6 +34,8 @@ class FlowAlg(IntEnum):
             return FlowAlg.EXEC
         elif mode == 'data opt':
             return FlowAlg.DATA_OPT
+        elif mode == 'compiled':
+            return FlowAlg.COMPILED
         else:
             raise ValueError(f'Invalid mode: {mode}')
 

@@ -31,9 +31,14 @@ def load_nodes_from_folder():
                 print(f"Error loading module {module_name}: {e}")
 
 def main():
-    filepath = 'flow_project.json'
-    if len(sys.argv) > 1:
-        filepath = sys.argv[1]
+    import argparse
+    parser = argparse.ArgumentParser(description="ryvencore CLI Flow Runner")
+    parser.add_argument('project_file', nargs='?', default='flow_project.json', help='Path to flow project file')
+    parser.add_argument('--compile', action='store_true', help='Compile the flow and exit')
+    parser.add_argument('--compiled-file', type=str, default=None, help='Active compiled file to use in compiled execution mode')
+    
+    args = parser.parse_args()
+    filepath = args.project_file
 
     if not os.path.exists(filepath):
         # check if it exists in saved_flows
@@ -48,6 +53,24 @@ def main():
     if not os.path.exists(filepath):
         print(f"Error: Project file not found: {filepath}")
         sys.exit(1)
+
+    if args.compile:
+        print(f"Compiling project flow: {filepath}...")
+        script_path = os.path.join(current_dir, 'compile_workflow.py')
+        compiled_dir = os.path.join(current_dir, 'compiled')
+        import subprocess
+        res = subprocess.run([sys.executable, script_path, filepath, compiled_dir], capture_output=True, text=True)
+        if res.returncode == 0 and "SUCCESS:" in res.stdout:
+            filename = ""
+            for line in res.stdout.splitlines():
+                if line.startswith("SUCCESS:"):
+                    filename = line.split("SUCCESS:")[1].strip()
+                    break
+            print(f"Flow compiled successfully. Saved to compiled/{filename}")
+            sys.exit(0)
+        else:
+            print(f"Compilation failed:\n{res.stderr or res.stdout}")
+            sys.exit(1)
 
     print(f"Loading nodes from folder...")
     load_nodes_from_folder()
@@ -68,6 +91,26 @@ def main():
     flow = flows[0]
     print(f"\nFlow '{flow.title}' loaded successfully!")
     print(f" - Nodes count: {len(flow.nodes)}")
+
+    def cli_on_output_changed(port):
+        try:
+            port_index = port.node.outputs.index(port)
+        except ValueError:
+            port_index = -1
+        val = port.val.payload if hasattr(port.val, 'payload') else port.val
+        print(f"[CLI Realtime Update] Node {port.node.title} (ID: {port.node.global_id}) output[{port_index}] -> {val}")
+
+    flow.output_changed.sub(cli_on_output_changed)
+    
+    if args.compiled_file:
+        flow.active_compiled_file = args.compiled_file
+        flow.set_algorithm_mode('compiled')
+        
+    print(f" - Execution mode: {flow.algorithm_mode()}")
+    if flow.algorithm_mode() == 'compiled':
+        # Trigger compiled executor initialization/validation
+        flow.executor.compile_and_load()
+        print(f" - Active compiled file: {flow.active_compiled_file}")
     
     # Count loops
     loops_count = sum(1 for n in flow.nodes if getattr(n, 'loop_enabled', False))
@@ -75,6 +118,12 @@ def main():
     print("\nRunning flow... Press Ctrl+C to stop.\n")
 
     try:
+        # If in compiled mode, we trigger the trigger nodes once to kick off execution if loops aren't auto-triggered
+        if flow.algorithm_mode() == 'compiled':
+            triggers = [n for n in flow.nodes if type(n).__name__ == 'TriggerNode']
+            for t in triggers:
+                flow.executor.update_node(t, -1)
+                
         while True:
             time.sleep(1.0)
     except KeyboardInterrupt:

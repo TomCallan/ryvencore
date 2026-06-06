@@ -119,6 +119,7 @@ class Flow(Base):
         self.connections_created_from_data = Event(list)
 
         self.algorithm_mode_changed = Event(str)
+        self.output_changed = Event(object)
 
         # connect events to add-ons
         for addon in session.addons.values():
@@ -129,6 +130,7 @@ class Flow(Base):
         self.title = title
         self.nodes: List[Node] = []
         self.load_data: Optional[Dict] = None
+        self.active_compiled_file = None
 
         self.node_successors: Dict[Node, List[Node]] = {}   # additional data structure for executors
         self.graph_adj: Dict[NodeOutput, List[NodeInput]] = {}         # directed adjacency list relating node ports
@@ -141,6 +143,7 @@ class Flow(Base):
         """Loading a flow from data as previously returned by ``Flow.data()``."""
         super().load(data)
         self.load_data = data
+        self.active_compiled_file = data.get('active compiled file', None)
 
         # set algorithm mode
         self.alg_mode = FlowAlg.from_str(data['algorithm mode'])
@@ -490,6 +493,7 @@ class Flow(Base):
         return {
             **super().data(),
             'algorithm mode': FlowAlg.str(self.alg_mode),
+            'active compiled file': self.active_compiled_file,
             'nodes': self._gen_nodes_data(self.nodes),
             'connections': self._gen_conns_data(self.nodes),
             'output data': self._gen_output_data(self.nodes),
