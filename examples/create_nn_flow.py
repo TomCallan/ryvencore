@@ -1,6 +1,9 @@
 """
-Creates neural network training and inference workflows.
-Demonstrates compilation speedups for NN operations.
+Neural Network Training & Inference — train a simple 2-layer NN and run inference.
+  Training: Trigger → Timer → NN Trainer (SGD backprop) → Loss → Log
+  Inference: Trigger → Timer → NN Inference (forward pass) → Prediction → Log
+
+Shows: neural network training loop, loss tracking, forward inference, compilation speedup.
 """
 import os
 import sys

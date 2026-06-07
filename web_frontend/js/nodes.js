@@ -13,17 +13,23 @@ const _chartRenderers = new Map();
 const NS = 'http://www.w3.org/2000/svg';
 const COLORS = ['#6366f1', '#22c55e', '#ef4444', '#f59e0b', '#06b6d4', '#a855f7', '#3b82f6', '#10b981'];
 
-/** Visible category for a node title */
+/** Visible category for a node title — clear taxonomy */
 export function getNodeCategory(title) {
-    if (['Add', 'Subtract', 'Multiply', 'Divide', 'Array Calculator'].includes(title)) return 'Math';
-    if (['Number', 'String', 'Concat', 'Uppercase'].includes(title)) return 'String';
-    if (['Compare', 'If/Else', 'Python REPL', 'Python Script', 'Branch', 'Counter'].includes(title)) return 'Logic';
-    if (['Trigger', 'Execute Button'].includes(title)) return 'Exec';
-    if (['Random', 'Log', 'Execution Timer', 'Lazy File Reader', 'CSV Parser'].includes(title)) return 'Utility';
-    if (['Plot', 'Advanced Plot', 'Orderbook Plot'].includes(title)) return 'Plotting';
-    if (['Parquet Reader', 'DuckDB Query'].includes(title)) return 'Database';
-    if (['Linear Layer', 'ReLU', 'Sigmoid', 'MSE Loss', 'SGD Optimizer', 'NN Inference', 'NN Trainer', 'NN Data Generator'].includes(title)) return 'Neural Net';
-    return 'Utility';
+    // Math & Stats
+    if (['Add', 'Subtract', 'Multiply', 'Divide', 'Array Calculator', 'Stats', 'Moving Average', 'Normalize', 'Correlation'].includes(title)) return 'Math & Stats';
+    // Data & I/O
+    if (['Parquet Reader', 'DuckDB Query', 'CSV Parser', 'Lazy File Reader', 'DataFrame'].includes(title)) return 'Data & I/O';
+    // Logic & Control Flow
+    if (['Compare', 'If/Else', 'Branch', 'Counter', 'Trigger', 'Execute Button', 'Filter'].includes(title)) return 'Control Flow';
+    // Scripting
+    if (['Python REPL', 'Python Script'].includes(title)) return 'Scripting';
+    // Plotting & Charts
+    if (['Plot', 'Advanced Plot', 'Orderbook Plot', 'Chart'].includes(title)) return 'Charts & Plots';
+    // Neural Networks
+    if (['Linear Layer', 'ReLU', 'Sigmoid', 'MSE Loss', 'SGD Optimizer', 'NN Inference', 'NN Trainer', 'NN Data Generator'].includes(title)) return 'Neural Nets';
+    // Utilities
+    if (['Random', 'Log', 'Execution Timer', 'Number', 'String', 'Concat', 'Uppercase'].includes(title)) return 'Utilities';
+    return 'Utilities';
 }
 
 const DEFAULT_SIZES = {

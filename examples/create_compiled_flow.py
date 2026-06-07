@@ -1,3 +1,10 @@
+"""
+Compilation Showcase — a hybrid flow demonstrating the standalone compilation pipeline.
+  Trigger → Timer → Counter → CLI script (subprocess) → Python REPL → Format script → Log
+
+Compiled mode runs the entire graph at native Python speed (3-16x speedup).
+Shows: FlowCompiler pipeline, compiled vs interpreted comparison, external script execution.
+"""
 import os
 import sys
 import json
@@ -29,14 +36,14 @@ def main():
     n_counter = flow.create_node(CounterNode)
     
     n_script1 = flow.create_node(PythonScriptNode)
-    n_script1.script_path = 'example_scripts/run_cli_cmd.py'
+    n_script1.script_path = 'examples/scripts/run_cli_cmd.py'
     n_script1.update_ports_from_script()
 
     n_repl = flow.create_node(PythonReplNode)
     n_repl.code = "out1 = f'REPL PROCESSED: {in1}'\nout2 = len(in1)"
 
     n_script2 = flow.create_node(PythonScriptNode)
-    n_script2.script_path = 'example_scripts/analyze_output.py'
+    n_script2.script_path = 'examples/scripts/analyze_output.py'
     n_script2.update_ports_from_script()
 
     n_log_msg = flow.create_node(LogNode)

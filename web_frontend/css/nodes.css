@@ -89,20 +89,18 @@
 .node-resize-handle:hover { background-color: var(--cat-color, var(--primary)); }
 
 /* Category coloring */
-.node-card[data-category="Math"] { --cat-color: var(--cat-math); }
-.node-card[data-category="String"] { --cat-color: var(--cat-string); }
-.node-card[data-category="Logic"] { --cat-color: var(--cat-logic); }
-.node-card[data-category="Utility"] { --cat-color: var(--cat-utility); }
-.node-card[data-category="Exec"] { --cat-color: var(--cat-exec); }
-.node-card[data-category="Plotting"] { --cat-color: var(--cat-math); }
-.node-card[data-category="Database"] { --cat-color: var(--cat-string); }
-.node-card[data-category="Neural Net"] { --cat-color: var(--cat-exec); }
+.node-card[data-category="Math & Stats"] { --cat-color: var(--cat-math); }
+.node-card[data-category="Data & I/O"] { --cat-color: var(--cat-string); }
+.node-card[data-category="Control Flow"] { --cat-color: var(--cat-exec); }
+.node-card[data-category="Scripting"] { --cat-color: var(--cat-logic); }
+.node-card[data-category="Charts & Plots"] { --cat-color: var(--cat-utility); }
+.node-card[data-category="Neural Nets"] { --cat-color: var(--cat-exec); }
+.node-card[data-category="Utilities"] { --cat-color: var(--cat-utility); }
 
-.node-item[data-category="Math"] { --cat-color: var(--cat-math); }
-.node-item[data-category="String"] { --cat-color: var(--cat-string); }
-.node-item[data-category="Logic"] { --cat-color: var(--cat-logic); }
-.node-item[data-category="Utility"] { --cat-color: var(--cat-utility); }
-.node-item[data-category="Exec"] { --cat-color: var(--cat-exec); }
-.node-item[data-category="Plotting"] { --cat-color: var(--cat-math); }
-.node-item[data-category="Database"] { --cat-color: var(--cat-string); }
-.node-item[data-category="Neural Net"] { --cat-color: var(--cat-exec); }
+.node-item[data-category="Math & Stats"] { --cat-color: var(--cat-math); }
+.node-item[data-category="Data & I/O"] { --cat-color: var(--cat-string); }
+.node-item[data-category="Control Flow"] { --cat-color: var(--cat-exec); }
+.node-item[data-category="Scripting"] { --cat-color: var(--cat-logic); }
+.node-item[data-category="Charts & Plots"] { --cat-color: var(--cat-utility); }
+.node-item[data-category="Neural Nets"] { --cat-color: var(--cat-exec); }
+.node-item[data-category="Utilities"] { --cat-color: var(--cat-utility); }
