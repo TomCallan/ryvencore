@@ -16,6 +16,16 @@
     <link rel="stylesheet" href="index.css">
 </head>
 <body>
+    <!-- Loading Overlay -->
+    <div id="app-loading" style="display:flex;position:fixed;top:0;left:0;width:100vw;height:100vh;background:var(--bg-darker);align-items:center;justify-content:center;flex-direction:column;gap:16px;z-index:99999;">
+        <span class="material-icons-round logo-icon" style="font-size:48px;">blur_on</span>
+        <div style="font-size:1.2rem;font-weight:600;color:var(--text-primary);">ryvencore Studio</div>
+        <div style="width:120px;height:3px;background:var(--border-color);border-radius:2px;overflow:hidden;">
+            <div style="width:30%;height:100%;background:linear-gradient(90deg,var(--primary),#a855f7);border-radius:2px;animation:loading-slide 1.2s ease-in-out infinite;"></div>
+        </div>
+        <div style="font-size:0.8rem;color:var(--text-secondary);">Loading flow...</div>
+    </div>
+    <style>@keyframes loading-slide{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}</style>
     <div class="app-container">
         <!-- Header -->
         <header class="app-header">

@@ -6,9 +6,9 @@
     height: 64px; background-color: rgba(24,24,36,0.85);
     backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-color);
     display: flex; justify-content: space-between; align-items: center;
-    padding: 0 24px; z-index: 10;
+    padding: 0 12px; z-index: 10; gap: 8px; flex-shrink: 0;
 }
-.logo-area { display: flex; align-items: center; gap: 8px; }
+.logo-area { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .logo-icon {
     font-size: 32px;
     background: linear-gradient(135deg, #a855f7, #6366f1);
@@ -17,7 +17,7 @@
 }
 .logo-area h1 { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.5px; }
 .logo-area h1 span { font-weight: 300; color: var(--text-secondary); }
-.controls-area { display: flex; align-items: center; gap: 16px; }
+.controls-area { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .control-group { display: flex; flex-direction: column; gap: 4px; }
 .control-group label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); font-weight: 500; }
 select {

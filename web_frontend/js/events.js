@@ -3,6 +3,7 @@
  * port add/delete/rename, wire deletion, trigger buttons, execution mode.
  */
 import * as API from './api.js';
+import * as Logs from './logs.js';
 
 let loadFlowFn = null;
 export function setLoadFlow(fn) { loadFlowFn = fn; }
@@ -12,7 +13,7 @@ export function loadFlow() { if (loadFlowFn) loadFlowFn(); }
 $(document).on('click', '.delete-btn', function () {
     const card = $(this).closest('.node-card');
     const id = card.attr('data-id');
-    API.deleteNode(id).then(() => { card.remove(); loadFlow(); });
+    if (id) API.deleteNode(id).then(() => { card.remove(); loadFlow(); });
 });
 
 // --- Inline input change ---
@@ -23,33 +24,37 @@ $(document).on('change', '.port-inline-input', function () {
 // --- Loop toggle ---
 $(document).on('change', '.loop-toggle', function () {
     const nid = $(this).attr('data-node');
+    if (!nid) return;
     const enabled = $(this).is(':checked');
     API.updateNodeProp(nid, 'loop_enabled', enabled).then(() => {
         loadFlow();
-        import('./logs.js').then(m => m.addLog(`Toggled repeat loop for Node ${nid}: ${enabled ? 'Enabled' : 'Disabled'}`));
+        Logs.addLog(`Toggled repeat loop for Node ${nid}: ${enabled ? 'Enabled' : 'Disabled'}`);
     });
 });
 
 // --- Loop interval ---
 $(document).on('change', '.loop-interval', function () {
-    API.updateNodeProp($(this).attr('data-node'), 'loop_interval', parseFloat($(this).val()) || 1.0).then(loadFlow);
+    const nid = $(this).attr('data-node');
+    if (nid) API.updateNodeProp(nid, 'loop_interval', parseFloat($(this).val()) || 1.0).then(loadFlow);
 });
 
 // --- Force trigger toggle ---
 $(document).on('change', '.force-trigger-toggle', function () {
     const nid = $(this).attr('data-node');
+    if (!nid) return;
     API.updateNodeProp(nid, 'force_trigger', $(this).is(':checked')).then(() => {
         loadFlow();
-        import('./logs.js').then(m => m.addLog(`Toggled force-trigger for Node ${nid}`));
+        Logs.addLog(`Toggled force-trigger for Node ${nid}`);
     });
 });
 
 // --- Wait complete toggle ---
 $(document).on('change', '.wait-complete-toggle', function () {
     const nid = $(this).attr('data-node');
+    if (!nid) return;
     API.updateNodeProp(nid, 'wait_until_complete', $(this).is(':checked')).then(() => {
         loadFlow();
-        import('./logs.js').then(m => m.addLog(`Toggled wait-complete for Node ${nid}`));
+        Logs.addLog(`Toggled wait-complete for Node ${nid}`);
     });
 });
 
@@ -57,18 +62,20 @@ $(document).on('change', '.wait-complete-toggle', function () {
 $(document).on('click', '.btn-trigger-action', function (e) {
     e.stopPropagation();
     const nid = $(this).attr('data-node');
+    if (!nid) return;
     API.triggerNode(nid).then(() => {
         loadFlow();
-        import('./logs.js').then(m => m.addLog(`Triggered Execute Button node ${nid}`));
+        Logs.addLog(`Triggered Execute Button node ${nid}`);
     });
 });
 
 // --- Double-click Exec nodes ---
 $(document).on('dblclick', '.node-card[data-category="Exec"]', function () {
     const nid = $(this).attr('data-id');
+    if (!nid) return;
     API.triggerNode(nid).then(() => {
         loadFlow();
-        import('./logs.js').then(m => m.addLog(`Double-clicked Exec node ${nid} to trigger execution path`));
+        Logs.addLog(`Double-clicked Exec node ${nid} to trigger execution path`);
     });
 });
 
@@ -115,7 +122,7 @@ $('#btn-mode-info').on('click', () => import('./modals.js').then(m => m.openInfo
 
 $('#btn-clear').on('click', () => {
     if (confirm('Clear entire flow?')) {
-        API.clearFlow().then(() => { loadFlow(); import('./logs.js').then(m => m.addLog('Cleared workspace flow')); });
+        API.clearFlow().then(() => { loadFlow(); Logs.addLog('Cleared workspace flow'); });
     }
 });
 
@@ -124,7 +131,7 @@ $('#btn-pause').on('click', function () {
     const next = !paused;
     API.setPaused(next).then(() => {
         loadFlow();
-        import('./logs.js').then(m => m.addLog(next ? 'Paused all execution loops' : 'Resumed all execution loops'));
+        Logs.addLog(next ? 'Paused all execution loops' : 'Resumed all execution loops');
     });
 });
 
@@ -136,12 +143,12 @@ $('#btn-pause-view').on('click', async function () {
         btn.removeClass('btn-secondary').addClass('btn-warning')
             .html('<span class="material-icons-round">visibility_off</span> Resume View')
             .attr('title', 'Resume canvas node updates');
-        (await import('./logs.js')).addLog('[Studio UI]: Canvas node view updates paused');
+        Logs.addLog('[Studio UI]: Canvas node view updates paused');
     } else {
         btn.removeClass('btn-warning').addClass('btn-secondary')
             .html('<span class="material-icons-round">visibility</span> Pause View')
             .attr('title', 'Pause canvas node updates (background execution continues)');
-        (await import('./logs.js')).addLog('[Studio UI]: Canvas node view updates resumed');
+        Logs.addLog('[Studio UI]: Canvas node view updates resumed');
         const { pollFlowUpdates } = await import('./app.js');
         pollFlowUpdates();
     }
@@ -161,14 +168,14 @@ $('#btn-run').on('click', function () {
             }
         });
         setTimeout(loadFlow, 250);
-        import('./logs.js').then(m => m.addLog('Manually triggered flow execution'));
+        Logs.addLog('Manually triggered flow execution');
     };
 
     if (mode === 'compiled' && recompile) {
-        import('./logs.js').then(m => m.addLog('[Warning]: Flow has modified nodes. Auto-recompiling...'));
+        Logs.addLog('[Warning]: Flow has modified nodes. Auto-recompiling...');
         API.compileFlow().then(res => {
             if (res.status === 'success') {
-                import('./logs.js').then(m => m.addLog('[Studio UI]: Auto-recompilation successful.'));
+                Logs.addLog('[Studio UI]: Auto-recompilation successful.');
                 triggerExec();
             } else {
                 alert('Auto-recompilation failed: ' + res.message);
@@ -180,11 +187,11 @@ $('#btn-run').on('click', function () {
 });
 
 $('#btn-compile').on('click', () => {
-    import('./logs.js').then(m => m.addLog('[Studio UI]: Compiling flow into a standalone Python file...'));
+    Logs.addLog('[Studio UI]: Compiling flow into a standalone Python file...');
     API.compileFlow().then(res => {
         if (res.status === 'success') {
             loadFlow();
-            import('./logs.js').then(m => m.addLog('[Studio UI]: Flow successfully compiled: ' + res.filename));
+            Logs.addLog('[Studio UI]: Flow successfully compiled: ' + res.filename);
         } else {
             alert('Compilation failed: ' + res.message);
         }
@@ -196,7 +203,7 @@ $('#alg-mode-select').on('change', function () {
     const mode = $(this).val();
     API.setAlgMode(mode).then(() => {
         loadFlow();
-        import('./logs.js').then(m => m.addLog(`Switched execution mode to: ${mode}`));
+        Logs.addLog(`Switched execution mode to: ${mode}`);
     }).catch(err => {
         alert(err.responseJSON?.message || 'Failed to set algorithm mode');
         loadFlow();
@@ -208,16 +215,16 @@ $('#compiled-file-select').on('change', function () {
     const fname = $(this).val();
     API.setCompiledFile(fname).then(() => {
         loadFlow();
-        import('./logs.js').then(m => m.addLog(`Switched active compiled file to: ${fname}`));
+        Logs.addLog(`Switched active compiled file to: ${fname}`);
     });
 });
 
 // --- Log panel header ---
 $('#logs-header').on('click', function (e) {
     if ($(e.target).closest('.footer-btn').length) return;
-    import('./logs.js').then(m => m.togglePanel());
+    Logs.togglePanel();
 });
-$('#btn-toggle-logs').on('click', () => import('./logs.js').then(m => m.togglePanel()));
+$('#btn-toggle-logs').on('click', () => Logs.togglePanel());
 $('#btn-clear-logs').on('click', () => {
     API.clearLogs().then(() => { $('#log-list').empty(); $('#log-count').text('0'); });
 });

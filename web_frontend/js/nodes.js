@@ -10,10 +10,13 @@ const NS = 'http://www.w3.org/2000/svg';
 /** Visible category for a node title */
 export function getNodeCategory(title) {
     if (['Add', 'Subtract', 'Multiply', 'Divide', 'Array Calculator'].includes(title)) return 'Math';
-    if (['Number', 'String', 'Concat', 'Uppercase', 'CSV Parser'].includes(title)) return 'String';
-    if (['Compare', 'If/Else', 'Python REPL', 'Python Script'].includes(title)) return 'Logic';
-    if (['Random', 'Log', 'Plot', 'Execution Timer', 'Lazy File Reader'].includes(title)) return 'Utility';
-    if (['Trigger', 'Branch', 'Counter'].includes(title)) return 'Exec';
+    if (['Number', 'String', 'Concat', 'Uppercase'].includes(title)) return 'String';
+    if (['Compare', 'If/Else', 'Python REPL', 'Python Script', 'Branch', 'Counter'].includes(title)) return 'Logic';
+    if (['Trigger', 'Execute Button'].includes(title)) return 'Exec';
+    if (['Random', 'Log', 'Execution Timer', 'Lazy File Reader', 'CSV Parser'].includes(title)) return 'Utility';
+    if (['Plot', 'Advanced Plot', 'Orderbook Plot'].includes(title)) return 'Plotting';
+    if (['Parquet Reader', 'DuckDB Query'].includes(title)) return 'Database';
+    if (['Linear Layer', 'ReLU', 'Sigmoid', 'MSE Loss', 'SGD Optimizer', 'NN Inference', 'NN Trainer', 'NN Data Generator'].includes(title)) return 'Neural Net';
     return 'Utility';
 }
 
@@ -274,7 +277,10 @@ function setupDragging($el) {
         }).on('mouseup.drag', () => {
             dragging = false; state.userInteracting = false;
             $(document).off('.drag');
-            API.moveNode($el.attr('data-id'), parseFloat($el.attr('data-x')), parseFloat($el.attr('data-y')));
+            const id = $el.attr('data-id');
+            if (id) {
+                API.moveNode(id, parseFloat($el.attr('data-x')), parseFloat($el.attr('data-y')));
+            }
         });
     });
 }
@@ -299,7 +305,9 @@ function setupResizing($el) {
             $(document).off('.resize');
             Wires.cachePortOffsets($el);
             const id = $el.attr('data-id');
-            API.moveNode(id, parseFloat($el.attr('data-x')), parseFloat($el.attr('data-y')), $el.attr('data-width'), $el.attr('data-height'));
+            if (id) {
+                API.moveNode(id, parseFloat($el.attr('data-x')), parseFloat($el.attr('data-y')), $el.attr('data-width'), $el.attr('data-height'));
+            }
         });
     });
 }

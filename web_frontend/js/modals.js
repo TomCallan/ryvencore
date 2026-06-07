@@ -4,6 +4,7 @@
 import { state } from './state.js';
 import { getNodeCategory } from './nodes.js';
 import * as API from './api.js';
+import * as Logs from './logs.js';
 
 // --- Modal helpers ---
 function showModal(id) { $(`#${id}`).css('display', 'flex').hide().fadeIn(200); }
