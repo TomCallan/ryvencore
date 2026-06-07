@@ -140,12 +140,12 @@ $('#btn-pause-view').on('click', async function () {
     const btn = $(this);
     if (state.viewPaused) {
         btn.removeClass('btn-secondary').addClass('btn-warning')
-            .html('<span class="material-icons-round">visibility_off</span> Resume View')
+            .html('<span class="material-icons-round">visibility_off</span><span class="btn-label"> Resume View</span>')
             .attr('title', 'Resume canvas node updates');
         Logs.addLog('[Studio UI]: Canvas node view updates paused');
     } else {
         btn.removeClass('btn-warning').addClass('btn-secondary')
-            .html('<span class="material-icons-round">visibility</span> Pause View')
+            .html('<span class="material-icons-round">visibility</span><span class="btn-label"> Pause View</span>')
             .attr('title', 'Pause canvas node updates (background execution continues)');
         Logs.addLog('[Studio UI]: Canvas node view updates resumed');
         refreshFlow();
@@ -224,11 +224,11 @@ export function updatePauseButton(paused) {
     const btn = $('#btn-pause');
     if (paused) {
         btn.removeClass('btn-secondary').addClass('btn-warning')
-            .html('<span class="material-icons-round">play_arrow</span> Resume')
+            .html('<span class="material-icons-round">play_arrow</span><span class="btn-label"> Resume</span>')
             .attr('title', 'Resume all execution');
     } else {
         btn.removeClass('btn-warning').addClass('btn-secondary')
-            .html('<span class="material-icons-round">pause</span> Pause')
+            .html('<span class="material-icons-round">pause</span><span class="btn-label"> Pause</span>')
             .attr('title', 'Pause all execution');
     }
 }

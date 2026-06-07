@@ -3,31 +3,72 @@
 
 /* Header */
 .app-header {
-    height: 64px; background-color: rgba(24,24,36,0.85);
+    height: 56px; min-height: 56px;
+    background-color: rgba(24,24,36,0.85);
     backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-color);
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 0 12px; z-index: 10; gap: 8px; flex-shrink: 0;
+    display: flex; align-items: center;
+    padding: 0 8px; z-index: 10; gap: 6px;
+    overflow: hidden;
 }
 .logo-area { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .logo-icon {
-    font-size: 32px;
+    font-size: 28px;
     background: linear-gradient(135deg, #a855f7, #6366f1);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    flex-shrink: 0;
 }
-.logo-area h1 { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.5px; }
-.logo-area h1 span { font-weight: 300; color: var(--text-secondary); }
-.controls-area { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-.control-group { display: flex; flex-direction: column; gap: 4px; }
-.control-group label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); font-weight: 500; }
+.logo-area h1 {
+    font-size: 1rem; font-weight: 600; letter-spacing: -0.5px;
+    display: flex; align-items: center; gap: 4px; white-space: nowrap;
+}
+.logo-area h1 .subtitle { font-weight: 300; color: var(--text-secondary); }
+.logo-area h1 .badge { font-size: 9px; padding: 2px 6px; border-radius: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.logo-area h1 .badge.compiled { background: linear-gradient(135deg,#ab47bc,#7b1fa2); color: #fff; box-shadow: 0 0 8px rgba(171,71,188,0.4); }
+.logo-area h1 .badge.recompile { background: linear-gradient(135deg,#ff9800,#f57c00); color: #fff; box-shadow: 0 0 8px rgba(255,152,0,0.4); }
+
+.controls-area {
+    display: flex; align-items: center; gap: 6px;
+    overflow-x: auto; overflow-y: hidden; flex: 1; justify-content: flex-end;
+    -ms-overflow-style: none; scrollbar-width: none;
+}
+.controls-area::-webkit-scrollbar { display: none; }
+
+.control-group { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+.control-group label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); font-weight: 500; }
 select {
     background-color: var(--bg-dark); border: 1px solid var(--border-color);
-    color: var(--text-primary); padding: 6px 12px; border-radius: 6px;
-    font-family: inherit; font-size: 0.85rem; outline: none; cursor: pointer;
+    color: var(--text-primary); padding: 4px 8px; border-radius: 6px;
+    font-family: inherit; font-size: 0.8rem; outline: none; cursor: pointer;
     transition: border-color var(--transition-fast);
 }
 select:focus { border-color: var(--primary); }
-.divider { height: 24px; width: 1px; background-color: var(--border-color); }
+.divider { height: 20px; width: 1px; background-color: var(--border-color); flex-shrink: 0; }
+
+/* Header buttons — compact by default */
+.controls-area .btn { padding: 5px 8px; font-size: 0.8rem; }
+.controls-area .btn .material-icons-round { font-size: 16px; }
+.controls-area .btn .btn-label { display: inline; }
+
+/* On narrow screens, hide button labels, show only icons */
+@media (max-width: 1100px) {
+    .controls-area .btn .btn-label { display: none; }
+    .controls-area .btn { padding: 5px 6px; }
+    .logo-area h1 { font-size: 0.9rem; }
+    .logo-icon { font-size: 24px; }
+}
+@media (max-width: 800px) {
+    .app-header { height: 48px; min-height: 48px; padding: 0 4px; }
+    .logo-area h1 { font-size: 0.8rem; }
+    .logo-area h1 .subtitle { display: none; }
+    .logo-icon { font-size: 20px; }
+    .control-group label { display: none; }
+    select { font-size: 0.75rem; padding: 3px 6px; }
+    .controls-area .btn { padding: 4px; }
+}
+@media (max-width: 600px) {
+    .controls-area .divider { display: none; }
+}
 
 /* Body */
 .app-body { display: flex; flex: 1; height: calc(100vh - 64px); position: relative; overflow: hidden; }

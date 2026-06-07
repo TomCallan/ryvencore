@@ -31,54 +31,54 @@
         <header class="app-header">
             <div class="logo-area">
                 <span class="material-icons-round logo-icon">blur_on</span>
-                <h1 style="display:flex;align-items:center;gap:8px;">
+                <h1>
                     ryvencore
-                    <span>Studio</span>
-                    <span id="compiled-badge" style="display:none;background:linear-gradient(135deg,#ab47bc,#7b1fa2);color:white;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;box-shadow:0 0 10px rgba(171,71,188,0.4);">Compiled</span>
-                    <span id="recompile-badge" style="display:none;background:linear-gradient(135deg,#ff9800,#f57c00);color:white;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;box-shadow:0 0 10px rgba(255,152,0,0.4);margin-left:6px;">Recompile Required</span>
+                    <span class="subtitle">Studio</span>
+                    <span class="badge compiled" id="compiled-badge" style="display:none;">Compiled</span>
+                    <span class="badge recompile" id="recompile-badge" style="display:none;">Recompile Required</span>
                 </h1>
             </div>
 
             <div class="controls-area">
                 <div class="control-group">
-                    <div style="display:flex;align-items:center;gap:6px;">
-                        <label for="alg-mode-select">Execution Mode</label>
-                        <span class="material-icons-round info-icon-btn" id="btn-mode-info" style="font-size:14px;cursor:pointer;color:var(--text-secondary);" title="Show execution modes info">info</span>
+                    <div style="display:flex;align-items:center;gap:4px;">
+                        <label for="alg-mode-select">Mode</label>
+                        <span class="material-icons-round info-icon-btn" id="btn-mode-info" style="font-size:13px;cursor:pointer;color:var(--text-secondary);" title="Show execution modes info">info</span>
                     </div>
                     <select id="alg-mode-select">
-                        <option value="data">Data Flow (Naive)</option>
-                        <option value="data opt">Data Flow (Optimized)</option>
-                        <option value="compiled">Run Compiled (Optimized Code)</option>
+                        <option value="data">Data Flow</option>
+                        <option value="data opt">Optimized</option>
+                        <option value="compiled">Compiled</option>
                     </select>
                 </div>
 
                 <div class="control-group" id="compiled-file-group" style="display:none;">
-                    <label for="compiled-file-select">Compiled File</label>
-                    <select id="compiled-file-select" style="min-width:180px;"></select>
+                    <label for="compiled-file-select">File</label>
+                    <select id="compiled-file-select"></select>
                 </div>
 
                 <div class="divider"></div>
 
                 <button id="btn-save" class="btn btn-secondary" title="Save to project file">
-                    <span class="material-icons-round">save</span> Save
+                    <span class="material-icons-round">save</span><span class="btn-label"> Save</span>
                 </button>
                 <button id="btn-load" class="btn btn-secondary" title="Load from project file">
-                    <span class="material-icons-round">folder_open</span> Load
+                    <span class="material-icons-round">folder_open</span><span class="btn-label"> Load</span>
                 </button>
                 <button id="btn-clear" class="btn btn-danger" title="Clear all nodes and connections">
-                    <span class="material-icons-round">delete_sweep</span> Clear
+                    <span class="material-icons-round">delete_sweep</span><span class="btn-label"> Clear</span>
                 </button>
                 <button id="btn-pause" class="btn btn-secondary" title="Pause all execution">
-                    <span class="material-icons-round">pause</span> Pause
+                    <span class="material-icons-round">pause</span><span class="btn-label"> Pause</span>
                 </button>
                 <button id="btn-pause-view" class="btn btn-secondary" title="Pause canvas node updates (background execution continues)">
-                    <span class="material-icons-round">visibility</span> Pause View
+                    <span class="material-icons-round">visibility</span><span class="btn-label"> Pause View</span>
                 </button>
                 <button id="btn-compile" class="btn btn-secondary" title="Compile current flow into a standalone Python file" style="background:linear-gradient(135deg,#ab47bc,#7b1fa2);color:white;border:none;font-weight:500;">
-                    <span class="material-icons-round">developer_mode</span> Compile
+                    <span class="material-icons-round">developer_mode</span><span class="btn-label"> Compile</span>
                 </button>
                 <button id="btn-run" class="btn btn-primary" title="Trigger execution update">
-                    <span class="material-icons-round">play_arrow</span> Run Flow
+                    <span class="material-icons-round">play_arrow</span><span class="btn-label"> Run Flow</span>
                 </button>
             </div>
         </header>

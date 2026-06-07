@@ -36,13 +36,11 @@ export async function loadFlow() {
             }
         }
 
-        // Recompile badge
+        // Recompile badge — only show in compiled mode when dirty
         const badge = $('#recompile-badge');
-        if (flowData.compiled_exists && flowData.compiled_dirty) {
+        if (flowData.algorithm_mode === 'compiled' && flowData.compiled_dirty) {
             badge.stop(true, true).fadeIn(200);
-            if (flowData.algorithm_mode === 'compiled') {
-                Logs.addLog('[Warning]: Flow modified since compilation. Recompilation required.');
-            }
+            Logs.addLog('[Warning]: Flow modified since compilation. Recompilation required.');
         } else {
             badge.stop(true, true).fadeOut(200);
         }
@@ -51,7 +49,7 @@ export async function loadFlow() {
         const runBtn = $('#btn-run');
         if (flowData.algorithm_mode === 'compiled') {
             $('#compiled-badge').stop(true).fadeIn(200);
-            runBtn.html('<span class="material-icons-round">play_arrow</span> Run Compiled')
+            runBtn.html('<span class="material-icons-round">play_arrow</span><span class="btn-label">Run Compiled</span>')
                 .css({ background: 'linear-gradient(135deg,#ab47bc,#7b1fa2)', border: 'none', 'box-shadow': '0 0 10px rgba(171,71,188,0.4)' })
                 .attr('title', 'Execute compiled in-process flow logic');
 
@@ -63,7 +61,7 @@ export async function loadFlow() {
             $('#compiled-file-group').stop(true).fadeIn(200);
         } else {
             $('#compiled-badge').stop(true).fadeOut(200);
-            runBtn.html('<span class="material-icons-round">play_arrow</span> Run Flow')
+            runBtn.html('<span class="material-icons-round">play_arrow</span><span class="btn-label">Run Flow</span>')
                 .css({ background: '', border: '', 'box-shadow': '' })
                 .attr('title', 'Trigger execution update');
             $('#compiled-file-group').stop(true).fadeOut(200);
@@ -93,9 +91,9 @@ export async function refreshFlow() {
         Wires.renderConnections(flowData.connections);
         Events.updatePauseButton(flowData.execution_paused);
 
-        // Sync compiled state changes (compiled_dirty flag can change during run)
+        // Sync compiled state — badge only in compiled mode
         const badge = $('#recompile-badge');
-        if (flowData.compiled_exists && flowData.compiled_dirty) {
+        if (flowData.algorithm_mode === 'compiled' && flowData.compiled_dirty) {
             badge.stop(true, true).fadeIn(200);
         } else {
             badge.stop(true, true).fadeOut(200);
