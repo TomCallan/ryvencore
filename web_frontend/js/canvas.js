@@ -2,6 +2,9 @@
  * Canvas viewport — pan, zoom, transform, and HUD controls.
  */
 import { state, applyTransform, setZoom } from './state.js';
+import * as API from './api.js';
+import * as Logs from './logs.js';
+import { loadFlow } from './events.js';
 
 export function init() {
     const viewport = $('#canvas-viewport');
@@ -62,10 +65,8 @@ export function init() {
         const offset = viewport.offset();
         const x = (e.originalEvent.clientX - offset.left - state.panX) / state.zoom;
         const y = (e.originalEvent.clientY - offset.top - state.panY) / state.zoom;
-        const { createNode } = await import('./api.js');
-        createNode(identifier, x, y);
-        const { addLog } = await import('./logs.js');
-        addLog(`Dropped new node: ${identifier}`);
+        API.createNode(identifier, x, y).then(loadFlow);
+        Logs.addLog(`Dropped new node: ${identifier}`);
     });
 
     // HUD buttons

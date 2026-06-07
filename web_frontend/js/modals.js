@@ -5,6 +5,7 @@ import { state } from './state.js';
 import { getNodeCategory } from './nodes.js';
 import * as API from './api.js';
 import * as Logs from './logs.js';
+import { loadFlow } from './events.js';
 
 // --- Modal helpers ---
 function showModal(id) { $(`#${id}`).css('display', 'flex').hide().fadeIn(200); }
@@ -22,7 +23,7 @@ $('#btn-confirm-save').on('click', function () {
     API.saveFlow(name).then(res => {
         state.currentFlowName = res.name;
         hideModals();
-        import('./logs.js').then(m => m.addLog(`Project saved successfully as "${res.name}"`));
+        Logs.addLog(`Project saved successfully as "${res.name}"`);
     }).catch(err => alert('Failed to save: ' + (err.responseJSON?.message || 'Unknown')));
 });
 $('#save-flow-name').on('keypress', e => { if (e.which === 13) $('#btn-confirm-save').click(); });
@@ -49,9 +50,9 @@ export function openLoadModal() {
                 item.on('click', () => {
                     API.loadFlow(f).then(loadRes => {
                         state.currentFlowName = loadRes.name;
-                        if (typeof loadFlow === 'function') loadFlow();
+                        loadFlow();
                         hideModals();
-                        import('./logs.js').then(m => m.addLog(`Loaded saved project flow: ${loadRes.name}`));
+                        Logs.addLog(`Loaded saved project flow: ${loadRes.name}`);
                     }).catch(err => alert('Failed to load: ' + (err.responseJSON?.message || 'Unknown')));
                 });
                 list.append(item);
@@ -152,8 +153,8 @@ $(document).on('click', '#node-radial-menu .radial-menu-item', function (e) {
         const next = !has;
         if (!next) API.updateNodeProp(nid, name, false);
         API.updateNodeProp(nid, visName + '_visible', next).then(() => {
-            if (typeof loadFlow === 'function') loadFlow();
-            import('./logs.js').then(m => m.addLog(`${logName} option ${next ? 'added to' : 'removed from'} Node ${nid}`));
+            loadFlow();
+            Logs.addLog(`${logName} option ${next ? 'added to' : 'removed from'} Node ${nid}`);
         });
     };
 
@@ -194,9 +195,7 @@ $('#radial-search-input').on('input', function () { renderRadialSearch($(this).v
 $(document).on('click', '.radial-search-item', function (e) {
     e.stopPropagation();
     const id = $(this).attr('data-identifier');
-    API.createNode(id, state.radialX, state.radialY).then(() => {
-        if (typeof loadFlow === 'function') loadFlow();
-    });
+    API.createNode(id, state.radialX, state.radialY).then(loadFlow);
     $('#radial-search-popup').hide();
 });
 
@@ -204,9 +203,7 @@ $(document).on('keydown', '#radial-search-input', function (e) {
     if (e.key === 'Enter') {
         const sel = $('#radial-search-results .radial-search-item.selected');
         if (sel.length) {
-            API.createNode(sel.attr('data-identifier'), state.radialX, state.radialY).then(() => {
-                if (typeof loadFlow === 'function') loadFlow();
-            });
+            API.createNode(sel.attr('data-identifier'), state.radialX, state.radialY).then(loadFlow);
             $('#radial-search-popup').hide();
         }
     } else if (e.key === 'Escape') {

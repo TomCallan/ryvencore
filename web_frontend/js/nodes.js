@@ -4,6 +4,7 @@
 import { state } from './state.js';
 import * as API from './api.js';
 import * as Wires from './wires.js';
+import { loadFlow } from './events.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 
@@ -222,9 +223,7 @@ function renderCustomContent($el, n) {
             inp.val(n.script_path || '');
             inp.on('mousedown selectstart', e => e.stopPropagation());
             inp.on('change', function () {
-                API.updateNodeProp(n.id, 'script_path', $(this).val()).then(() => {
-                    if (typeof loadFlow === 'function') loadFlow();
-                });
+                API.updateNodeProp(n.id, 'script_path', $(this).val()).then(loadFlow);
             });
         } else {
             const inp = $el.find('.script-path-input');

@@ -4,6 +4,7 @@
 import { state } from './state.js';
 import { getNodeCategory } from './nodes.js';
 import * as API from './api.js';
+import { loadFlow } from './events.js';
 
 export function loadLibrary() {
     API.loadNodeTemplates().then(data => {
@@ -47,7 +48,7 @@ function bindSidebarEvents() {
         const vp = $('#canvas-viewport');
         const x = (vp.width() / 2 - state.panX) / state.zoom;
         const y = (vp.height() / 2 - state.panY) / state.zoom;
-        API.createNode(id, x, y).then(() => { if (typeof loadFlow === 'function') loadFlow(); });
+        API.createNode(id, x, y).then(loadFlow);
     });
 
     // Drag start

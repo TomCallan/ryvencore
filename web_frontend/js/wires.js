@@ -4,6 +4,8 @@
  */
 import { state } from './state.js';
 import * as API from './api.js';
+import * as Logs from './logs.js';
+import { loadFlow } from './events.js';
 
 const resizeObserver = new ResizeObserver(() => refreshAll());
 
@@ -222,7 +224,7 @@ export function endWireDraw(ev) {
             const inpIdx = dc.direction === 'input' ? dc.portIndex : dIdx;
 
             API.connectNodes(parentId, outIdx, destId, inpIdx)
-                .then(() => { if (typeof loadFlow === 'function') loadFlow(); })
+                .then(loadFlow)
                 .catch(err => alert('Invalid Connection: ' + (err.responseJSON?.message || 'Unknown')));
         }
     } else if (dc.direction === 'output') {
@@ -233,8 +235,8 @@ export function endWireDraw(ev) {
             if (tgtCard.length && tgtCard.attr('data-id') !== dc.nodeId) {
                 API.updateNodeProp(dc.nodeId, 'target_node_id', tgtCard.attr('data-id'))
                     .then(() => {
-                        import('./logs.js').then(m => m.addLog(`Linked Execute Button ${dc.nodeId} to Node ${tgtCard.attr('data-id')}`));
-                        if (typeof loadFlow === 'function') loadFlow();
+                        Logs.addLog(`Linked Execute Button ${dc.nodeId} to Node ${tgtCard.attr('data-id')}`);
+                        loadFlow();
                     });
             }
         }

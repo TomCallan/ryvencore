@@ -1,5 +1,6 @@
 /**
  * app.js — Main entry point for ryvencore Studio.
+ * Exports loadFlow() (full re-render) and refreshFlow() (light value update).
  */
 import { state, applyTransform } from './state.js';
 import * as API from './api.js';
@@ -10,17 +11,13 @@ import * as Sidebar from './sidebar.js';
 import * as Logs from './logs.js';
 import * as Events from './events.js';
 import * as Modals from './modals.js';
-import { setLoadFlow } from './events.js';
+import { setLoadFlow, setRefreshFlow } from './events.js';
 
-// ---- Loading overlay ----
-function showLoading(visible) {
-    $('#app-loading').toggle(visible);
-}
+let _loaded = false;
 
-// ---- Flow Loading ----
+/** Full re-render — for structural changes (add/delete node, connect, mode, load) */
 export async function loadFlow() {
     try {
-        showLoading(true);
         const flowData = await API.loadFlowState();
 
         // Algorithm mode selector
@@ -39,7 +36,7 @@ export async function loadFlow() {
             }
         }
 
-        // Recompile badge — stop any running animation first
+        // Recompile badge
         const badge = $('#recompile-badge');
         if (flowData.compiled_exists && flowData.compiled_dirty) {
             badge.stop(true, true).fadeIn(200);
@@ -52,10 +49,8 @@ export async function loadFlow() {
 
         // Compiled UI customization
         const runBtn = $('#btn-run');
-        const compiledBadge = $('#compiled-badge');
-        const compiledFileGroup = $('#compiled-file-group');
         if (flowData.algorithm_mode === 'compiled') {
-            compiledBadge.stop(true).fadeIn(200);
+            $('#compiled-badge').stop(true).fadeIn(200);
             runBtn.html('<span class="material-icons-round">play_arrow</span> Run Compiled')
                 .css({ background: 'linear-gradient(135deg,#ab47bc,#7b1fa2)', border: 'none', 'box-shadow': '0 0 10px rgba(171,71,188,0.4)' })
                 .attr('title', 'Execute compiled in-process flow logic');
@@ -65,29 +60,52 @@ export async function loadFlow() {
                 flowData.compiled_files.forEach(f => sel.append($('<option>').val(f).text(f)));
                 if (flowData.active_compiled_file) sel.val(flowData.active_compiled_file);
             }
-            compiledFileGroup.stop(true).fadeIn(200);
+            $('#compiled-file-group').stop(true).fadeIn(200);
         } else {
-            compiledBadge.stop(true).fadeOut(200);
+            $('#compiled-badge').stop(true).fadeOut(200);
             runBtn.html('<span class="material-icons-round">play_arrow</span> Run Flow')
                 .css({ background: '', border: '', 'box-shadow': '' })
                 .attr('title', 'Trigger execution update');
-            compiledFileGroup.stop(true).fadeOut(200);
+            $('#compiled-file-group').stop(true).fadeOut(200);
         }
 
         Events.updatePauseButton(flowData.execution_paused);
 
-        // Render
+        // Full render
         Nodes.renderNodes(flowData.nodes);
         Nodes.updateFlowValues(flowData);
         Wires.renderConnections(flowData.connections);
+
+        _loaded = true;
     } catch (err) {
         console.error('loadFlow failed:', err);
     } finally {
-        showLoading(false);
+        $('#app-loading').hide();
     }
 }
 
-// ---- Right-click menus (static imports) ----
+/** Light refresh — only updates values and wires, no node re-render */
+export async function refreshFlow() {
+    if (!_loaded) return loadFlow();
+    try {
+        const flowData = await API.loadFlowState();
+        Nodes.updateFlowValues(flowData);
+        Wires.renderConnections(flowData.connections);
+        Events.updatePauseButton(flowData.execution_paused);
+
+        // Sync compiled state changes (compiled_dirty flag can change during run)
+        const badge = $('#recompile-badge');
+        if (flowData.compiled_exists && flowData.compiled_dirty) {
+            badge.stop(true, true).fadeIn(200);
+        } else {
+            badge.stop(true, true).fadeOut(200);
+        }
+    } catch (err) {
+        console.error('refreshFlow failed:', err);
+    }
+}
+
+// ---- Right-click menus ----
 $('#canvas-viewport').on('contextmenu', function (e) {
     if ($(e.target).closest('.node-card, .port-handle, .wire-path').length) return;
     e.preventDefault();
@@ -136,6 +154,7 @@ $(document).on('mousedown', '.port-handle', function (e) {
 function init() {
     applyTransform();
     setLoadFlow(loadFlow);
+    setRefreshFlow(refreshFlow);
     Canvas.init();
     Sidebar.loadLibrary();
     Logs.startLogPolling();
