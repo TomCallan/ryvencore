@@ -1,4 +1,4 @@
-# Structure Hash: 7e77323f11aaf8d20b47b3ad1e428228415d9f160959cd3543f17d9ee444edb0
+# Structure Hash: 3bf17c700633ae2ff4c57cc2ee3effe8566233d8aaa64a22b2c952df417c129d
 """
 Compiled ryvencore flow: nn_training_bench
 Generated automatically by FlowCompiler.
@@ -375,100 +375,100 @@ def setup_flow(actual_nodes=None):
     nodes = {}
     flow_alg = 'data'
 
-    # Node: Trigger (ID: 39)
-    n_39 = TriggerNode(params=None)
-    n_39.node_id = 39
-    n_39.global_id = 39
-    n_39.flow_alg = flow_alg
-    if actual_nodes and 39 in actual_nodes:
-        n_39.actual_node = actual_nodes[39]
-    n_39.create_output('out', 'exec')
-    n_39.loop_enabled = False
-    n_39.loop_interval = 1.0
-    n_39.wait_until_complete = False
-    n_39.auto_exec_downstream = False
-    nodes[39] = n_39
+    # Node: Trigger (ID: 2)
+    n_2 = TriggerNode(params=None)
+    n_2.node_id = 2
+    n_2.global_id = 2
+    n_2.flow_alg = flow_alg
+    if actual_nodes and 2 in actual_nodes:
+        n_2.actual_node = actual_nodes[2]
+    n_2.create_output('out', 'exec')
+    n_2.loop_enabled = False
+    n_2.loop_interval = 1.0
+    n_2.wait_until_complete = False
+    n_2.auto_exec_downstream = False
+    nodes[2] = n_2
 
-    # Node: Execution Timer (ID: 40)
-    n_40 = ExecutionTimerNode(params=None)
-    n_40.node_id = 40
-    n_40.global_id = 40
-    n_40.flow_alg = flow_alg
-    if actual_nodes and 40 in actual_nodes:
-        n_40.actual_node = actual_nodes[40]
-    n_40.create_input('trigger', 'exec', default=rc.Data(None))
-    n_40.create_output('out', 'exec')
-    n_40.create_output('time_ms', 'data')
-    n_40.loop_enabled = False
-    n_40.loop_interval = 1.0
-    n_40.wait_until_complete = False
-    n_40.auto_exec_downstream = False
-    nodes[40] = n_40
+    # Node: Execution Timer (ID: 3)
+    n_3 = ExecutionTimerNode(params=None)
+    n_3.node_id = 3
+    n_3.global_id = 3
+    n_3.flow_alg = flow_alg
+    if actual_nodes and 3 in actual_nodes:
+        n_3.actual_node = actual_nodes[3]
+    n_3.create_input('trigger', 'exec', default=rc.Data(None))
+    n_3.create_output('out', 'exec')
+    n_3.create_output('time_ms', 'data')
+    n_3.loop_enabled = False
+    n_3.loop_interval = 1.0
+    n_3.wait_until_complete = False
+    n_3.auto_exec_downstream = False
+    nodes[3] = n_3
 
-    # Node: NN Trainer (ID: 41)
-    n_41 = NNTrainerNode(params=None)
-    n_41.node_id = 41
-    n_41.global_id = 41
-    n_41.flow_alg = flow_alg
-    if actual_nodes and 41 in actual_nodes:
-        n_41.actual_node = actual_nodes[41]
-    n_41.create_input('input_data', 'data', default=rc.Data([0.2788535969157675, -0.9499784895546661]))
-    n_41.create_input('target', 'data', default=rc.Data([-2.30335986098923]))
-    n_41.create_input('lr', 'data', default=rc.Data(0.01))
-    n_41.create_input('activation', 'data', default=rc.Data('relu'))
-    n_41.create_output('prediction', 'data')
-    n_41.create_output('loss', 'data')
-    n_41.create_output('weights_1', 'data')
-    n_41.create_output('weights_2', 'data')
-    n_41.create_output('bias_1', 'data')
-    n_41.create_output('bias_2', 'data')
-    n_41.loop_enabled = False
-    n_41.loop_interval = 1.0
-    n_41.wait_until_complete = False
-    n_41.auto_exec_downstream = False
-    nodes[41] = n_41
+    # Node: NN Trainer (ID: 4)
+    n_4 = NNTrainerNode(params=None)
+    n_4.node_id = 4
+    n_4.global_id = 4
+    n_4.flow_alg = flow_alg
+    if actual_nodes and 4 in actual_nodes:
+        n_4.actual_node = actual_nodes[4]
+    n_4.create_input('input_data', 'data', default=rc.Data([0.2788535969157675, -0.9499784895546661]))
+    n_4.create_input('target', 'data', default=rc.Data([-2.30335986098923]))
+    n_4.create_input('lr', 'data', default=rc.Data(0.01))
+    n_4.create_input('activation', 'data', default=rc.Data('relu'))
+    n_4.create_output('prediction', 'data')
+    n_4.create_output('loss', 'data')
+    n_4.create_output('weights_1', 'data')
+    n_4.create_output('weights_2', 'data')
+    n_4.create_output('bias_1', 'data')
+    n_4.create_output('bias_2', 'data')
+    n_4.loop_enabled = False
+    n_4.loop_interval = 1.0
+    n_4.wait_until_complete = False
+    n_4.auto_exec_downstream = False
+    nodes[4] = n_4
 
-    # Node: Log (ID: 37)
-    n_37 = LogNode(params=None)
-    n_37.node_id = 37
-    n_37.global_id = 37
-    n_37.flow_alg = flow_alg
-    if actual_nodes and 37 in actual_nodes:
-        n_37.actual_node = actual_nodes[37]
-    n_37.create_input('msg', 'data', default=rc.Data(''))
-    n_37.create_output('out', 'data')
-    n_37.loop_enabled = False
-    n_37.loop_interval = 1.0
-    n_37.wait_until_complete = False
-    n_37.auto_exec_downstream = False
-    nodes[37] = n_37
+    # Node: Log (ID: 0)
+    n_0 = LogNode(params=None)
+    n_0.node_id = 0
+    n_0.global_id = 0
+    n_0.flow_alg = flow_alg
+    if actual_nodes and 0 in actual_nodes:
+        n_0.actual_node = actual_nodes[0]
+    n_0.create_input('msg', 'data', default=rc.Data(''))
+    n_0.create_output('out', 'data')
+    n_0.loop_enabled = False
+    n_0.loop_interval = 1.0
+    n_0.wait_until_complete = False
+    n_0.auto_exec_downstream = False
+    nodes[0] = n_0
 
-    # Node: Log (ID: 38)
-    n_38 = LogNode(params=None)
-    n_38.node_id = 38
-    n_38.global_id = 38
-    n_38.flow_alg = flow_alg
-    if actual_nodes and 38 in actual_nodes:
-        n_38.actual_node = actual_nodes[38]
-    n_38.create_input('msg', 'data', default=rc.Data(''))
-    n_38.create_output('out', 'data')
-    n_38.loop_enabled = False
-    n_38.loop_interval = 1.0
-    n_38.wait_until_complete = False
-    n_38.auto_exec_downstream = False
-    nodes[38] = n_38
+    # Node: Log (ID: 1)
+    n_1 = LogNode(params=None)
+    n_1.node_id = 1
+    n_1.global_id = 1
+    n_1.flow_alg = flow_alg
+    if actual_nodes and 1 in actual_nodes:
+        n_1.actual_node = actual_nodes[1]
+    n_1.create_input('msg', 'data', default=rc.Data(''))
+    n_1.create_output('out', 'data')
+    n_1.loop_enabled = False
+    n_1.loop_interval = 1.0
+    n_1.wait_until_complete = False
+    n_1.auto_exec_downstream = False
+    nodes[1] = n_1
 
     # Connections
-    nodes[39].connections[0] = [(nodes[40], 0)]
-    nodes[40].connections[1] = [(nodes[38], 0)]
-    nodes[41].connections[1] = [(nodes[37], 0)]
+    nodes[2].connections[0] = [(nodes[3], 0)]
+    nodes[3].connections[1] = [(nodes[1], 0)]
+    nodes[4].connections[1] = [(nodes[0], 0)]
 
     # Run initial placement events
-    nodes[39].after_placement()
-    nodes[40].after_placement()
-    nodes[41].after_placement()
-    nodes[37].after_placement()
-    nodes[38].after_placement()
+    nodes[2].after_placement()
+    nodes[3].after_placement()
+    nodes[4].after_placement()
+    nodes[0].after_placement()
+    nodes[1].after_placement()
 
     return nodes
 
