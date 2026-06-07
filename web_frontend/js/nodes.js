@@ -5,8 +5,13 @@ import { state } from './state.js';
 import * as API from './api.js';
 import * as Wires from './wires.js';
 import { loadFlow } from './events.js';
+import { ChartRenderer } from './plotting.js';
+
+// Track renderers per node for cleanup
+const _chartRenderers = new Map();
 
 const NS = 'http://www.w3.org/2000/svg';
+const COLORS = ['#6366f1', '#22c55e', '#ef4444', '#f59e0b', '#06b6d4', '#a855f7', '#3b82f6', '#10b981'];
 
 /** Visible category for a node title */
 export function getNodeCategory(title) {
@@ -230,19 +235,29 @@ function renderCustomContent($el, n) {
             if (!inp.is(':focus')) inp.val(n.script_path || '');
         }
     } else if (n.title === 'Plot') {
-        if (!$el.find('.node-custom-content').length) {
-            $el.find('.node-ports').after(`<div class="node-custom-content" style="padding:0 14px 10px;display:flex;flex-direction:column;gap:4px;align-items:center;width:100%;"><svg class="plot-svg" width="100%" height="80" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.05);border-radius:4px;"></svg></div>`);
+        // Replace or create plot container
+        let ctr = $el.find('.node-custom-content');
+        if (!ctr.length) {
+            $el.find('.node-ports').after(`<div class="node-custom-content" style="padding:0 10px 10px;display:flex;flex-direction:column;gap:4px;align-items:center;width:100%;height:100px;box-sizing:border-box;"><div class="plot-canvas" style="width:100%;height:100%;border:1px solid rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;"></div></div>`);
+            ctr = $el.find('.node-custom-content');
         }
-        const svg = $el.find('.plot-svg');
+        // Lazily create ChartRenderer
+        const nid = n.id.toString();
+        if (!_chartRenderers.has(nid)) {
+            const canvas = ctr.find('.plot-canvas');
+            const cr = new ChartRenderer(canvas[0], { title: n.title, bg: 'rgba(0,0,0,0.35)' });
+            _chartRenderers.set(nid, cr);
+        }
+        const cr = _chartRenderers.get(nid);
+        // Parse buffer: array of numbers or array of arrays
         const buf = n.buffer || [];
-        svg.empty();
-        if (buf.length > 1) {
-            const minV = Math.min(...buf), maxV = Math.max(...buf);
-            const range = (maxV - minV) || 1.0;
-            const w = svg.width() || 192, h = 80;
-            const pts = buf.map((v, i) => `${(i / (buf.length - 1)) * w},${h - 8 - ((v - minV) / range) * (h - 16)}`).join(' ');
-            svg.append($(document.createElementNS(NS, 'polyline')).attr('points', pts).attr('style', 'fill:none;stroke:var(--primary);stroke-width:2'));
+        let series;
+        if (buf.length > 0 && Array.isArray(buf[0])) {
+            series = buf.map((arr, i) => ({ data: arr, color: COLORS[i % COLORS.length], label: n.series_labels?.[i] || '' }));
+        } else {
+            series = [{ data: buf, color: '#6366f1', label: '', fill: true }];
         }
+        cr.setData(series);
     } else if (n.title === 'Advanced Plot' || n.title === 'Orderbook Plot') {
         if (!$el.find('.node-custom-content').length) {
             $el.find('.node-ports').after(`<div class="node-custom-content" style="padding:0 10px 10px;display:flex;flex-direction:column;gap:4px;align-items:center;width:100%;height:160px;box-sizing:border-box;"><div class="custom-svg-container" style="width:100%;height:100%;border:1px solid rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;background:rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;"></div></div>`);
@@ -365,21 +380,22 @@ export function updateFlowValues(flowData) {
         $el.find('.node-timer-wrapper').css('display', (repOpt || timerOpt || forceOpt || waitOpt) ? 'block' : 'none');
 
         // SVG updates
-        if (n.title === 'Plot') updatePlotSVG($el, n.buffer || []);
-        else if (n.title === 'Advanced Plot' || n.title === 'Orderbook Plot') {
+        if (n.title === 'Plot') {
+            const cr = _chartRenderers.get(n.id.toString());
+            if (cr) {
+                const buf = n.buffer || [];
+                let series;
+                if (buf.length > 0 && Array.isArray(buf[0])) {
+                    series = buf.map((arr, i) => ({ data: arr, color: COLORS[i % COLORS.length] }));
+                } else {
+                    series = [{ data: buf, color: '#6366f1', fill: true }];
+                }
+                cr.setData(series);
+            }
+        } else if (n.title === 'Advanced Plot' || n.title === 'Orderbook Plot') {
             const ctr = $el.find('.custom-svg-container');
             if (ctr.length) ctr.html(n.svg_content || '<div style="color:var(--text-muted);font-size:0.65rem;">No data plotted yet</div>');
         }
     });
 }
 
-function updatePlotSVG($el, buf) {
-    const svg = $el.find('.plot-svg');
-    if (!svg.length || buf.length < 2) return;
-    svg.empty();
-    const minV = Math.min(...buf), maxV = Math.max(...buf);
-    const range = (maxV - minV) || 1.0;
-    const w = svg.width() || 192, h = 80;
-    const pts = buf.map((v, i) => `${(i / (buf.length - 1)) * w},${h - 8 - ((v - minV) / range) * (h - 16)}`).join(' ');
-    svg.append($(document.createElementNS(NS, 'polyline')).attr('points', pts).attr('style', 'fill:none;stroke:var(--primary);stroke-width:2'));
-}
