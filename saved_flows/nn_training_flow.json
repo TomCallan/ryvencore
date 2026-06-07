@@ -1,0 +1,509 @@
+{
+    "GID": 2,
+    "version": "0.3.1",
+    "flows": {
+        "nn_training_flow": {
+            "GID": 3,
+            "algorithm mode": "data",
+            "active compiled file": null,
+            "nodes": [
+                {
+                    "GID": 4,
+                    "identifier": "TriggerNode",
+                    "version": null,
+                    "state data": "gAV9lC4=",
+                    "additional data": {
+                        "x": 100,
+                        "y": 200,
+                        "width": 200,
+                        "height": 120,
+                        "loop_enabled": false,
+                        "loop_interval": 1.0,
+                        "auto_exec_downstream": false,
+                        "force_trigger": false,
+                        "wait_until_complete": false,
+                        "repeat_option_visible": false,
+                        "timer_option_visible": false,
+                        "force_trigger_visible": false,
+                        "wait_complete_visible": false
+                    },
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "GID": 5,
+                            "type": "exec",
+                            "label": "out"
+                        }
+                    ]
+                },
+                {
+                    "GID": 6,
+                    "identifier": "ExecutionTimerNode",
+                    "version": null,
+                    "state data": "gAV9lC4=",
+                    "additional data": {
+                        "x": 300,
+                        "y": 200,
+                        "width": 200,
+                        "height": 120,
+                        "loop_enabled": false,
+                        "loop_interval": 1.0,
+                        "auto_exec_downstream": false,
+                        "force_trigger": false,
+                        "wait_until_complete": false,
+                        "repeat_option_visible": false,
+                        "timer_option_visible": false,
+                        "force_trigger_visible": false,
+                        "wait_complete_visible": false
+                    },
+                    "inputs": [
+                        {
+                            "GID": 7,
+                            "type": "exec",
+                            "label": "trigger"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "GID": 8,
+                            "type": "exec",
+                            "label": "out"
+                        },
+                        {
+                            "GID": 9,
+                            "type": "data",
+                            "label": "time_ms"
+                        }
+                    ]
+                },
+                {
+                    "GID": 10,
+                    "identifier": "CounterNode",
+                    "version": null,
+                    "state data": "gAV9lC4=",
+                    "additional data": {
+                        "x": 550,
+                        "y": 200,
+                        "width": 200,
+                        "height": 120,
+                        "loop_enabled": false,
+                        "loop_interval": 1.0,
+                        "auto_exec_downstream": false,
+                        "force_trigger": false,
+                        "wait_until_complete": false,
+                        "repeat_option_visible": false,
+                        "timer_option_visible": false,
+                        "force_trigger_visible": false,
+                        "wait_complete_visible": false
+                    },
+                    "inputs": [
+                        {
+                            "GID": 11,
+                            "type": "exec",
+                            "label": "inc"
+                        },
+                        {
+                            "GID": 12,
+                            "type": "exec",
+                            "label": "reset"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "GID": 13,
+                            "type": "exec",
+                            "label": "out"
+                        },
+                        {
+                            "GID": 14,
+                            "type": "data",
+                            "label": "count"
+                        }
+                    ]
+                },
+                {
+                    "GID": 15,
+                    "identifier": "NNTrainerNode",
+                    "version": null,
+                    "state data": "gAV9lC4=",
+                    "additional data": {
+                        "x": 800,
+                        "y": 200,
+                        "width": 200,
+                        "height": 120,
+                        "loop_enabled": false,
+                        "loop_interval": 1.0,
+                        "auto_exec_downstream": false,
+                        "force_trigger": false,
+                        "wait_until_complete": false,
+                        "repeat_option_visible": false,
+                        "timer_option_visible": false,
+                        "force_trigger_visible": false,
+                        "wait_complete_visible": false,
+                        "hidden_size": 8,
+                        "input_size": 2,
+                        "output_size": 1,
+                        "w1": [
+                            [
+                                0.13824961858764942,
+                                -0.47498924477733306
+                            ],
+                            [
+                                -0.22497068163088074,
+                                -0.27678926185117725
+                            ],
+                            [
+                                0.23778113490140837,
+                                0.1766994874229113
+                            ],
+                            [
+                                0.39010411344406637,
+                                -0.41306116737058385
+                            ],
+                            [
+                                -0.07807818031472957,
+                                -0.47020278056192966
+                            ],
+                            [
+                                -0.28136202519639664,
+                                0.005355288103362388
+                            ],
+                            [
+                                -0.4734640303161364,
+                                -0.3011623493133515
+                            ],
+                            [
+                                0.14843332632263437,
+                                0.04494148060321668
+                            ]
+                        ],
+                        "b1": [
+                            -0.0011771798702343342,
+                            0.0,
+                            0.0013099207373959735,
+                            -0.002075454260779028,
+                            0.0,
+                            0.0,
+                            0.0,
+                            -0.001451111456888836
+                        ],
+                        "w2": [
+                            [
+                                -0.27897103580384297,
+                                0.08926568387590872,
+                                0.31042829916854126,
+                                -0.4918463520598329,
+                                0.3058192518328079,
+                                0.19813939498822686,
+                                -0.15974948348200813,
+                                -0.34388802971504895
+                            ]
+                        ],
+                        "b2": [
+                            0.004219720756466138
+                        ]
+                    },
+                    "inputs": [
+                        {
+                            "GID": 17,
+                            "type": "data",
+                            "label": "input_data",
+                            "default": {
+                                "GID": 16,
+                                "identifier": "Data",
+                                "serialized": "gAWVFwAAAAAAAABdlChHAAAAAAAAAABHAAAAAAAAAABlLg=="
+                            }
+                        },
+                        {
+                            "GID": 19,
+                            "type": "data",
+                            "label": "target",
+                            "default": {
+                                "GID": 18,
+                                "identifier": "Data",
+                                "serialized": "gAWVDQAAAAAAAABdlEcAAAAAAAAAAGEu"
+                            }
+                        },
+                        {
+                            "GID": 21,
+                            "type": "data",
+                            "label": "lr",
+                            "default": {
+                                "GID": 20,
+                                "identifier": "Data",
+                                "serialized": "gAWVCgAAAAAAAABHP4R64UeuFHsu"
+                            }
+                        },
+                        {
+                            "GID": 23,
+                            "type": "data",
+                            "label": "activation",
+                            "default": {
+                                "GID": 22,
+                                "identifier": "Data",
+                                "serialized": "gAWVCAAAAAAAAACMBHJlbHWULg=="
+                            }
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "GID": 24,
+                            "type": "data",
+                            "label": "prediction"
+                        },
+                        {
+                            "GID": 25,
+                            "type": "data",
+                            "label": "loss"
+                        },
+                        {
+                            "GID": 26,
+                            "type": "data",
+                            "label": "weights_1"
+                        },
+                        {
+                            "GID": 27,
+                            "type": "data",
+                            "label": "weights_2"
+                        },
+                        {
+                            "GID": 28,
+                            "type": "data",
+                            "label": "bias_1"
+                        },
+                        {
+                            "GID": 29,
+                            "type": "data",
+                            "label": "bias_2"
+                        }
+                    ]
+                },
+                {
+                    "GID": 0,
+                    "identifier": "LogNode",
+                    "version": null,
+                    "state data": "gAV9lC4=",
+                    "additional data": {
+                        "x": 1100,
+                        "y": 200,
+                        "width": 200,
+                        "height": 120,
+                        "loop_enabled": false,
+                        "loop_interval": 1.0,
+                        "auto_exec_downstream": false,
+                        "force_trigger": false,
+                        "wait_until_complete": false,
+                        "repeat_option_visible": false,
+                        "timer_option_visible": false,
+                        "force_trigger_visible": false,
+                        "wait_complete_visible": false
+                    },
+                    "inputs": [
+                        {
+                            "GID": 31,
+                            "type": "data",
+                            "label": "msg",
+                            "default": {
+                                "GID": 30,
+                                "identifier": "Data",
+                                "serialized": "gAWVBAAAAAAAAACMAJQu"
+                            }
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "GID": 32,
+                            "type": "data",
+                            "label": "out"
+                        }
+                    ]
+                },
+                {
+                    "GID": 1,
+                    "identifier": "LogNode",
+                    "version": null,
+                    "state data": "gAV9lC4=",
+                    "additional data": {
+                        "x": 1100,
+                        "y": 350,
+                        "width": 200,
+                        "height": 120,
+                        "loop_enabled": false,
+                        "loop_interval": 1.0,
+                        "auto_exec_downstream": false,
+                        "force_trigger": false,
+                        "wait_until_complete": false,
+                        "repeat_option_visible": false,
+                        "timer_option_visible": false,
+                        "force_trigger_visible": false,
+                        "wait_complete_visible": false
+                    },
+                    "inputs": [
+                        {
+                            "GID": 33,
+                            "type": "data",
+                            "label": "msg",
+                            "default": {
+                                "GID": 30,
+                                "identifier": "Data",
+                                "serialized": "gAWVBAAAAAAAAACMAJQu"
+                            }
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "GID": 34,
+                            "type": "data",
+                            "label": "out"
+                        }
+                    ]
+                }
+            ],
+            "connections": [
+                {
+                    "parent node index": 0,
+                    "output port index": 0,
+                    "connected node": 1,
+                    "connected input port index": 0
+                },
+                {
+                    "parent node index": 1,
+                    "output port index": 0,
+                    "connected node": 2,
+                    "connected input port index": 0
+                },
+                {
+                    "parent node index": 1,
+                    "output port index": 1,
+                    "connected node": 5,
+                    "connected input port index": 0
+                },
+                {
+                    "parent node index": 2,
+                    "output port index": 1,
+                    "connected node": 3,
+                    "connected input port index": 0
+                },
+                {
+                    "parent node index": 3,
+                    "output port index": 1,
+                    "connected node": 4,
+                    "connected input port index": 0
+                }
+            ],
+            "output data": [
+                {
+                    "data": {
+                        "GID": 35,
+                        "identifier": "Data",
+                        "serialized": "gAWVCgAAAAAAAABHP28hLWAAAAAu"
+                    },
+                    "dependent node outputs": [
+                        1,
+                        1
+                    ]
+                },
+                {
+                    "data": {
+                        "GID": 36,
+                        "identifier": "Data",
+                        "serialized": "gAVLAS4="
+                    },
+                    "dependent node outputs": [
+                        2,
+                        1
+                    ]
+                },
+                {
+                    "data": {
+                        "GID": 37,
+                        "identifier": "Data",
+                        "serialized": "gAWVDQAAAAAAAABdlEe/ywGXKi6OcmEu"
+                    },
+                    "dependent node outputs": [
+                        3,
+                        0
+                    ]
+                },
+                {
+                    "data": {
+                        "GID": 38,
+                        "identifier": "Data",
+                        "serialized": "gAWVCgAAAAAAAABHP6bKrytrSZgu"
+                    },
+                    "dependent node outputs": [
+                        3,
+                        1
+                    ]
+                },
+                {
+                    "data": {
+                        "GID": 39,
+                        "identifier": "Data",
+                        "serialized": "gAWVtQAAAAAAAABdlChdlChHP8GyKdtCW9lHv95mOUoRTfplXZQoR7/My9bcFOxIR7/RtupO4jnyZV2UKEc/zm+cuwDvo0c/xp4Wu9nGaGVdlChHP9j3dz5Rv+xHv9pvmBtGq95lXZQoR7+z/O5++6LoR7/eF81nQBy2ZV2UKEe/0gHV3iOCsEc/de9tNDvMgGVdlChHv95NPBOCkfRHv9NGPnJFl4RlXZQoRz/C/9z9GJpbRz+nApHa2WmgZWUu"
+                    },
+                    "dependent node outputs": [
+                        3,
+                        2
+                    ]
+                },
+                {
+                    "data": {
+                        "GID": 40,
+                        "identifier": "Data",
+                        "serialized": "gAWVUAAAAAAAAABdlF2UKEe/0dqpVNPCkkc/ttodqObwMEc/094OqCuibUe/33ppHzA/pUc/05KK6Ub7dkc/yVyhtsMHUEe/xHKry43WyEe/1gJC8EcrMmVhLg=="
+                    },
+                    "dependent node outputs": [
+                        3,
+                        3
+                    ]
+                },
+                {
+                    "data": {
+                        "GID": 41,
+                        "identifier": "Data",
+                        "serialized": "gAWVTQAAAAAAAABdlChHv1NJc0LTnZZHAAAAAAAAAABHP1V2NK6O1ZFHv2EAiwWUmeFHAAAAAAAAAABHAAAAAAAAAABHAAAAAAAAAABHv1fGZxADFnplLg=="
+                    },
+                    "dependent node outputs": [
+                        3,
+                        4
+                    ]
+                },
+                {
+                    "data": {
+                        "GID": 42,
+                        "identifier": "Data",
+                        "serialized": "gAWVDQAAAAAAAABdlEc/cUiyqls8cmEu"
+                    },
+                    "dependent node outputs": [
+                        3,
+                        5
+                    ]
+                },
+                {
+                    "data": {
+                        "GID": 43,
+                        "identifier": "Data",
+                        "serialized": "gAWVCgAAAAAAAABHP6bKrytrSZgu"
+                    },
+                    "dependent node outputs": [
+                        4,
+                        0
+                    ]
+                },
+                {
+                    "data": {
+                        "GID": 44,
+                        "identifier": "Data",
+                        "serialized": "gAWVCgAAAAAAAABHP28hLWAAAAAu"
+                    },
+                    "dependent node outputs": [
+                        5,
+                        0
+                    ]
+                }
+            ]
+        }
+    },
+    "addons": {}
+}
