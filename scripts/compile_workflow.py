@@ -3,18 +3,18 @@ import sys
 import json
 import time
 
-# Add current directory and nodes directory to path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(current_dir)
-sys.path.append(os.path.join(current_dir, 'nodes'))
+# Project root (one level up from scripts/)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(PROJECT_ROOT)
+sys.path.append(os.path.join(PROJECT_ROOT, 'nodes'))
 
 import ryvencore as rc
 from ryvencore.Metrics import global_metrics
-from run_cli import load_nodes_from_folder, NODE_CLASSES
+from scripts.run_cli import load_nodes_from_folder, NODE_CLASSES
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: python compile_workflow.py <flow_json_path> <output_dir>")
+        print("Usage: python scripts/compile_workflow.py <flow_json_path> <output_dir>")
         sys.exit(1)
 
     flow_json_path = sys.argv[1]
@@ -34,7 +34,6 @@ def main():
 
     flow = flows[0]
 
-    # Use metrics-aware compilation
     t0 = time.perf_counter()
     compiled_code = rc.FlowCompiler.compile_with_metrics(flow)
     elapsed = time.perf_counter() - t0
@@ -51,7 +50,6 @@ def main():
     with open(filepath, 'w', encoding='utf-8') as f:
         f.write(compiled_code)
 
-    # Output metrics
     info = {
         'filename': filename,
         'compile_time_ms': elapsed * 1000,

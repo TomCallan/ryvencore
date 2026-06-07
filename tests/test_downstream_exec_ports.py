@@ -2,8 +2,11 @@ import sys
 import os
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import ryvencore as rc
-import run_web_server as ws
+import scripts.run_web_server as ws
 from basic_nodes import TriggerNode, BranchNode, CounterNode
 
 def test_downstream_exec_ports():

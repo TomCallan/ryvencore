@@ -38,7 +38,7 @@ def get_generated_files(basedir):
 
 def cleanup():
 
-    os.chdir(os.path.dirname(__file__))
+    os.chdir(os.path.join(os.path.dirname(__file__), '..'))
 
     # print('UNINSTALLING RYVENCORE')
     #

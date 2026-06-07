@@ -7,3 +7,15 @@ dist/
 ryvencore.egg-info/
 site/
 rust/
+
+# Generated compiled flows
+compiled/
+
+# Generated dataset files
+large_dataset.*
+*.parquet
+*.csv
+
+# Benchmark output
+benchmark_results.json
+cli_benchmark_results.json

@@ -76,6 +76,9 @@ and check whether you can successfully load the package from Python.
 
 import os
 
+# Change to project root so 'ryvencore' paths resolve correctly
+os.chdir(os.path.join(os.path.dirname(__file__), '..'))
+
 
 def get_ext_paths(root_dir, exclude_files=[], recursive=True):
 

@@ -6,14 +6,15 @@ import urllib.parse
 import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-# Add current directory to path to import ryvencore
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Project root (one level up from scripts/)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(PROJECT_ROOT)
 import ryvencore as rc
 
 import importlib
 
 # Ensure nodes folder is in sys.path
-nodes_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'nodes')
+nodes_dir = os.path.join(PROJECT_ROOT, 'nodes')
 if nodes_dir not in sys.path:
     sys.path.append(nodes_dir)
 
@@ -205,7 +206,7 @@ def get_input_val(node, index):
 
 def get_compiled_files(flow):
     import os
-    compiled_dir = os.path.abspath('compiled')
+    compiled_dir = os.path.join(PROJECT_ROOT, 'compiled')
     if not os.path.exists(compiled_dir):
         return []
     flow_title_safe = "".join(c for c in flow.title if c.isalnum() or c == '_')
@@ -222,7 +223,7 @@ def get_compiled_files(flow):
 
 def check_compiled_status(flow):
     import os
-    compiled_dir = os.path.abspath('compiled')
+    compiled_dir = os.path.join(PROJECT_ROOT, 'compiled')
     compiled_files = get_compiled_files(flow)
     if not compiled_files:
         return {
@@ -377,14 +378,14 @@ class APIRequestHandler(BaseHTTPRequestHandler):
         elif path == '/api/logs':
             self.send_json_response(nb.log_messages)
         elif path == '/api/list_flows':
-            flows_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'saved_flows')
+            flows_dir = os.path.join(PROJECT_ROOT, 'saved_flows')
             os.makedirs(flows_dir, exist_ok=True)
             files = []
             for filename in os.listdir(flows_dir):
                 if filename.endswith('.json'):
                     files.append(filename[:-5])
             
-            default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'flow_project.json')
+            default_path = os.path.join(PROJECT_ROOT, 'saved_flows', 'flow_project.json')
             if os.path.exists(default_path) and 'flow_project' not in files:
                 files.append('flow_project')
             
@@ -395,7 +396,7 @@ class APIRequestHandler(BaseHTTPRequestHandler):
             if filename == '':
                 filename = 'index.html'
             
-            filepath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'web_frontend', filename)
+            filepath = os.path.join(PROJECT_ROOT, 'web_frontend', filename)
             if os.path.exists(filepath) and os.path.isfile(filepath):
                 self.send_response(200)
                 if filepath.endswith('.html'):
@@ -634,7 +635,7 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                 if not name:
                     name = 'flow_project'
                 
-                flows_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'saved_flows')
+                flows_dir = os.path.join(PROJECT_ROOT, 'saved_flows')
                 os.makedirs(flows_dir, exist_ok=True)
                 
                 filepath = os.path.join(flows_dir, f"{name}.json")
@@ -644,7 +645,7 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                 
                 # Also save default flow_project.json in root if it's the default name
                 if name == 'flow_project':
-                    default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'flow_project.json')
+                    default_path = os.path.join(PROJECT_ROOT, 'saved_flows', 'flow_project.json')
                     with open(default_path, 'w') as f:
                         json.dump(data, f, indent=4)
 
@@ -656,11 +657,11 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                 if not name:
                     name = 'flow_project'
                 
-                flows_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'saved_flows')
+                flows_dir = os.path.join(PROJECT_ROOT, 'saved_flows')
                 filepath = os.path.join(flows_dir, f"{name}.json")
                 
                 if not os.path.exists(filepath) and name == 'flow_project':
-                    filepath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'flow_project.json')
+                    filepath = os.path.join(PROJECT_ROOT, 'saved_flows', 'flow_project.json')
 
                 if os.path.exists(filepath):
                     with open(filepath, 'r') as f:
@@ -698,7 +699,7 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                     import subprocess
                     import sys
                     
-                    compiled_dir = os.path.abspath('compiled')
+                    compiled_dir = os.path.join(PROJECT_ROOT, 'compiled')
                     os.makedirs(compiled_dir, exist_ok=True)
                     
                     # Serialize the session flow data to pass to script
@@ -707,7 +708,7 @@ class APIRequestHandler(BaseHTTPRequestHandler):
                         json.dump(data, temp_f, indent=4)
                         temp_path = temp_f.name
                         
-                    script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'compile_workflow.py')
+                    script_path = os.path.join(PROJECT_ROOT, 'scripts', 'compile_workflow.py')
                     
                     result = subprocess.run(
                         [sys.executable, script_path, temp_path, compiled_dir],

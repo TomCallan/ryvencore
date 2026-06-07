@@ -3,7 +3,7 @@ import sys
 import json
 
 # Add paths for importing basic_nodes and ryvencore
-current_dir = os.path.dirname(os.path.abspath(__file__))
+current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(current_dir)
 sys.path.append(os.path.join(current_dir, 'nodes'))
 
@@ -76,7 +76,7 @@ def main():
     targets = [
         os.path.join(flows_dir, 'pipeline_flow.json'),
         os.path.join(flows_dir, 'flow_project.json'),
-        os.path.join(current_dir, 'flow_project.json')
+        os.path.join(current_dir, 'saved_flows', 'flow_project.json')
     ]
     for filepath in targets:
         with open(filepath, 'w') as f:

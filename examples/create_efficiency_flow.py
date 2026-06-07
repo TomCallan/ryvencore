@@ -5,7 +5,7 @@ import csv
 import random
 
 # Add paths for importing basic_nodes and ryvencore
-current_dir = os.path.dirname(os.path.abspath(__file__))
+current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(current_dir)
 sys.path.append(os.path.join(current_dir, 'nodes'))
 
